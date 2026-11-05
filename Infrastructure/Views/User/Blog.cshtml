@@ -1,0 +1,162 @@
+@model PostModel
+@{
+    Layout = "_AdminLayout";
+}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="form-container">
+                @if (TempData["submit"] != null)
+                {
+                    <div class="alert alert-success" role="alert">
+                        @TempData["submit"]
+                    </div>
+                }
+                <h2 class="custom-header">Tạo hoặc sửa thông tin bài viết tại đây</h2>
+                <form id="blogForm" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Tiêu đề:</label>
+                        <input type="text" id="title" name="Title" value="@Model?.Title" class="form-control" placeholder="Nhập tiêu đề bài viết..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Nội dung:</label>
+                        <textarea id="content" name="Content" asp-for="Content" class="form-control" placeholder="Nhập nội dung bài viết..." rows="6" required></textarea>
+                    </div>
+                    <!-- Cảnh báo sẽ hiển thị ở đây -->
+                    <div id="warning-message" class="text-danger" style="display: none;">
+                        Nội dung quá lớn. Vui lòng giảm kích thước trước khi tiếp tục!
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ảnh bìa:  @(Model != null ? "Đã thêm ảnh" : "Chưa chọn ảnh nào")</label>
+                        <input type="file" id="images" name="ImageUrl" class="form-control" accept="image/*" @(Model != null ? "" : "required")>
+                    </div>
+                    <div class="text-center">
+                        <button id="submit-button" type="submit" class="save">Lưu bài viết</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            const maxSize = 2.5 * 1024 * 1024; // 2,5MB in bytes
+            let currentImages = [];
+
+            function extractImageUrls(html) {
+                let urls = [];
+                let regex = /<img[^>]+src=["']([^"']+)["']/gi;
+                let match;
+                while ((match = regex.exec(html)) !== null) {
+                    urls.push(match[1]);
+                }
+                return urls;
+            }
+
+            // Khởi tạo Summernote
+            $('#content').summernote({
+                placeholder: 'Nhập nội dung tại đây...',
+                height: 350,
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'underline', 'clear']],
+                    ['fontname', ['fontname']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link', 'picture', 'video']],
+                    ['view', ['fullscreen', 'codeview', 'help']],
+                ],
+                callbacks: {
+                    onInit: function() {
+                        currentImages = extractImageUrls($('#content').summernote('code'));
+                    },
+                    onImageUpload: function (files) {
+                        for (let i = 0; i < files.length; i++) {
+                            uploadImageToCloudinary(files[i]);
+                        }
+                    }
+                }
+            });
+
+            function deleteImageFromCloudinary(url) {
+                $.ajax({
+                    url: '/SummernoteDeleteImage',
+                    type: 'POST',
+                    data: { url: url },
+                    success: function (response) {
+                        console.log("Ảnh đã được xóa khỏi Cloudinary.");
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Lỗi khi xóa ảnh:", error);
+                    }
+                });
+            }
+
+            function uploadImageToCloudinary(file) {
+                var data = new FormData();
+                data.append("file", file);
+                data.append("folder", "posts");
+                $.ajax({
+                    url: '/SummernoteUploadImage',
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    data: data,
+                    type: "post",
+                    success: function (response) {
+                        if(response && response.url) {
+                            var imgNode = $('<img>').attr('src', response.url);
+                            $('#content').summernote('insertNode', imgNode[0]);
+                        } else {
+                            alert("Có lỗi khi upload ảnh.");
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert(xhr.responseText || error || "Lỗi khi upload ảnh");
+                    }
+                });
+            }
+
+            // Lắng nghe sự kiện thay đổi nội dung
+            $('#content').on('summernote.change', function () {
+                let content = $('#content').summernote('code');  // Lấy mã HTML của nội dung
+                
+                // Track current images to catch keyboard delete
+                let newImages = extractImageUrls(content);
+                let deletedImages = currentImages.filter(img => !newImages.includes(img));
+                deletedImages.forEach(img => {
+                    deleteImageFromCloudinary(img);
+                });
+                currentImages = newImages;
+
+                let contentSize = new Blob([content]).size;  // Tính kích thước nội dung
+
+                console.log("Content size: " + contentSize + " bytes");
+
+                // Kiểm tra nếu nội dung vượt quá 2MB
+                if (contentSize > maxSize) {
+                    // Thêm lớp invalid-input (bôi đỏ viền)
+                    $('#content').addClass('invalid-input').removeClass('valid-input');
+                    // Hiển thị cảnh báo
+                    $('#warning-message').show();
+                    // Vô hiệu hóa nút submit
+                    $('#submit-button').prop('disabled', true);
+                } else {
+                    // Xóa lớp invalid-input và thêm lớp valid-input (reset viền)
+                    $('#content').removeClass('invalid-input').addClass('valid-input');
+                    // Ẩn cảnh báo
+                    $('#warning-message').hide();
+                    // Kích hoạt nút submit
+                    $('#submit-button').prop('disabled', false);
+                }
+            });
+        });
+    </script>
+}
+
+

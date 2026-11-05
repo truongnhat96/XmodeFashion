@@ -1,0 +1,7 @@
+@{ Layout = "_XmodeLayout"; }
+@RenderBody()
+@section MetaTags { @await RenderSectionAsync("MetaTags", required: false) }
+@section Styles { @await RenderSectionAsync("Styles", required: false) }
+@section Scripts { @await RenderSectionAsync("Scripts", required: false) }
+@section AddProductQuantityInLocal { @await RenderSectionAsync("AddProductQuantityInLocal", required: false) }
+@section UpdateQuantityProductInLocal { @await RenderSectionAsync("UpdateQuantityProductInLocal", required: false) }

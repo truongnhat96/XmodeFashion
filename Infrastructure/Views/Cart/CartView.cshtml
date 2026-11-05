@@ -1,0 +1,334 @@
+@using System.Text.Json
+@using System.Security.Claims
+@model List<CartModel>
+@{
+    int totalItems = 0;
+    int userId = User.Identity?.IsAuthenticated == true ? int.Parse(User.FindFirstValue(ClaimTypes.Sid) ?? "0") : 0;
+    double totalPrice = 0;
+    foreach (var item in Model)
+    {
+        totalItems += item.Quantity;
+        totalPrice += item.Product.Price * item.Quantity;
+    }
+}
+
+@if (TempData["CartMessage"] != null)
+{
+    <div class="ts-toast" data-truongshop-toast="1" data-ts-toast-type="success" role="status" aria-live="polite" aria-atomic="true">
+        <div class="ts-toast__icon" aria-hidden="true">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="ts-toast__message">
+            <div class="ts-toast__title">Thành công!</div>
+            <div class="ts-toast__content">@TempData["CartMessage"]</div>
+        </div>
+        <button type="button" class="ts-toast__close" aria-label="Đóng thông báo">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+}
+
+@if (Model.Count != 0)
+{
+    <section class="h-custom">
+        <div class="container py-5">
+            <div class="row d-flex justify-content-center align-items-center h-100">
+                <div class="col-12">
+                    <div class="card card-registration card-registration-2" style="border-radius: 15px;">
+                        <div class="card-body p-0">
+                            <div class="row g-0">
+                                <div class="col-lg-8">
+                                    <div class="p-5">
+                                        <div class="d-flex justify-content-between align-items-center mb-5">
+                                            <h1 class="fw-bold mb-0">Shopping Cart</h1>
+                                            <h6 class="mb-0 text-muted">@totalItems items</h6>
+                                        </div>
+                                        <hr class="my-4">
+
+                                        @foreach (var item in Model)
+                                        {
+                                            <div class="row mb-4 d-flex justify-content-between align-items-center">
+
+                                                <div class="col-md-2 col-lg-2 col-xl-2">
+                                                    <a href="/product/@item.Product.Id" class="product-link">
+                                                        <img onerror="this.src='/images/not-found.png'" src="/uploads/products/@item.Product.ImageUrl"
+                                                             class="img-fluid rounded-3" alt="@item.Product.Name">
+                                                    </a>
+                                                </div>
+                                                <div class="col-md-3 col-lg-3 col-xl-3">
+                                                    <a href="/product/@item.Product.Id" class="product-link">
+                                                        <h6 class="mb-0">@item.Product.Name</h6>
+                                                    </a>
+                                                </div>
+                                                <div class="col-md-3 col-lg-3 col-xl-2 d-flex">
+
+                                                    <input type="number" class="quantity-input" value="@item.Quantity" inputmode="numeric" min="0" data-product-id="@item.Product.Id">
+
+                                                </div>
+                                                <div class="col-md-3 col-lg-2 col-xl-2 offset-lg-1">
+                                                    <h6 class="mb-0">@item.Product.Price.ToString("c0", new CultureInfo("vi-VN"))</h6>
+                                                </div>
+                                                <div class="col-md-1 col-lg-1 col-xl-1 text-end">
+                                                    <a href="/Cart-Remove/@item.Product.Id/@item.Product.Name" class="text-muted"><i class="fas fa-times"></i></a>
+                                                </div>
+                                            </div>
+
+                                            <hr class="my-4">
+                                        }
+
+                                        <!-- Cảnh báo số lượng tồn kho -->
+                                        <div style="display:none;" class="cart-warning">
+                                            <span class="cart-warning-icon">&#9888;</span>
+                                            <span class="cart-warning-text">
+                                                  Số lượng bạn muốn mua vượt quá số hàng hiện có!
+                                            </span>
+                                        </div>
+
+                                        <div class="pt-5 d-flex justify-content-between">
+                                            <h6 class="mb-0">
+                                                <a href="/" class="text-body">
+                                                    <i class="fas fa-long-arrow-alt-left me-2"></i>Back to shop
+                                                </a>
+                                            </h6>
+                                            <div id="wrapper" class="cursor-disable">
+                                                <button id="button-update" class="btn-update" disabled>
+                                                    <span class="text">Update Cart</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4 bg-body-tertiary">
+                                    <div class="p-5">
+                                        <h3 class="fw-bold mb-5 mt-2 pt-1">Tổng cộng giỏ hàng</h3>
+                                        <hr class="my-4">
+
+                                        <div class="d-flex justify-content-between mb-4">
+                                            <h5 class="text-uppercase">Số lượng: @totalItems</h5>
+                                            <h5>@totalPrice.ToString("c0", new CultureInfo("vi-VN"))</h5>
+                                        </div>
+
+                                        <h5 class="text-uppercase mb-3">Mã giảm giá</h5>
+
+                                        <form asp-action="Discount" method="post">
+                                            <div class="mb-5">
+                                                <div data-mdb-input-init class="form-outline">
+                                                    <input type="text" name="coupon" class="form-control form-control-lg mb-2 @(TempData["CartError"] != null ? "error" : "")" placeholder="Enter your coupon" required />
+                                                    <span class="notify-error">@TempData["CartError"]</span>
+                                                    <button type="submit" data-mdb-button-init data-mdb-ripple-init class="btn btn-dark btn-block btn-lg"
+                                                            data-mdb-ripple-color="dark">
+                                                        Áp dụng
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+
+                                        <hr class="my-4">
+
+                                        <div class="d-flex justify-content-between mb-5">
+                                            <h5 class="text-uppercase">Tổng tiền:</h5>
+                                            <h5>@totalPrice.ToString("c0", new CultureInfo("vi-VN"))</h5>
+                                        </div>
+
+                                        <!--payment - Production-->
+                                        <form method="post" asp-action="Checkout" asp-controller="Payment">
+                                            <div class="mb-5">
+                                                <h3>Thông tin thanh toán</h3>
+                                                <input type="hidden" name="userId" value="@userId" />
+                                                <div class="form-group">
+                                                    <label for="name">Tên <span class="text-danger">*</span></label>
+                                                    <input class="form-control" type="text" id="name" name="name" value="@ViewBag.Name" required />
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="phone">Số Điện Thoại <span class="text-danger">*</span></label>
+                                                    <input class="form-control" type="text" id="phone" name="phone" required />
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="email">Email <span class="text-danger">*</span></label>
+                                                    <input class="form-control" type="email" id="email" name="email" value="@ViewBag.Email" required />
+                                                </div>
+                                                <br/>
+                                                <h3>Thông tin bổ sung</h3>
+                                                <div class="form-group">
+                                                    <label for="note">Ghi chú đơn hàng</label>
+                                                    <textarea id="note" class="form-control mt-2" name="note" placeholder="Nếu bạn có yêu cầu đặc biệt, hãy ghi chú tại đây..."></textarea>
+                                                </div>
+                                            </div>
+                                            <button class="frutiger-button">
+                                                <div class="inner">
+                                                    <div class="top-white"></div>
+                                                    <span class="text">Tiến hành thanh toán</span>
+                                                </div>
+                                            </button>
+                                        </form>
+
+
+                                        <!--payment - Development-->
+                                        @* <a href="/pay/@userId" class="frutiger-button">
+                                          <div class="inner">
+                                            <div class="top-white"></div>
+                                            <span class="text">Tiến hành thanh toán</span>
+                                          </div>
+                                        </a> *@
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+}
+else
+{
+    int rdCate = new Random().Next(1, 9);
+
+    <div class="container d-flex justify-content-center align-items-center" style="height: 80vh;">
+        <div class="card shadow-sm p-4" style="width: 750px;">
+            <div class="d-flex align-items-center mb-4">
+                <div class="bg-info text-white rounded-circle d-flex justify-content-center align-items-center ico-box">
+                    <i class="bi bi-info-circle" style="font-size: 35px;"></i>
+                </div>
+                <p class="ms-2 mb-0" style="font-size: 36px;">Chưa có sản phẩm nào trong giỏ hàng.</p>
+            </div>
+            <a href="/Category/@rdCate" class="btn btn-success w-100">MUA SẮM NGAY</a>
+        </div>
+    </div>
+}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Lấy tất cả các ô nhập số lượng và nút "Update Cart"
+        const quantityInputs = document.querySelectorAll('.quantity-input');
+        const updateCartButton = document.getElementById('button-update');
+        const wrap = document.querySelector('#wrapper');
+        const cartWarning = document.querySelector('.cart-warning');
+
+        let initialQuantities = {}; // Lưu giá trị ban đầu của các ô nhập số lượng
+
+        // Lưu giá trị ban đầu cho mỗi ô nhập số lượng (dùng key 'Id' + productId)
+        quantityInputs.forEach(input => {
+            const productId = input.getAttribute('data-product-id');
+            initialQuantities['Id' + productId] = input.value;
+        });
+
+        // Hàm kiểm tra nếu số lượng thay đổi so với giá trị ban đầu
+        function checkQuantityChange() {
+            let isModified = false; // Kiểm tra nếu có ô nhập nào thay đổi
+            let isExceedQuantity = false;
+            let remainValue = 0;
+            let storageQuantity = JSON.parse(localStorage.getItem(window.quantityKey || 'productQuantity')) || {};
+
+            // Kiểm tra tất cả các ô nhập số lượng
+            quantityInputs.forEach(input => {
+                const productId = input.getAttribute('data-product-id');
+                const currentValueStr = input.value;
+                const currentValue = parseInt(currentValueStr) || 0;
+
+                // Nếu giá trị hiện tại khác giá trị ban đầu thì đánh dấu là có thay đổi
+                if (currentValueStr !== initialQuantities['Id' + productId]) {
+                    isModified = true;
+                }
+
+                // Kiểm tra xem số lượng có vượt quá tồn kho không
+                const idKey = 'Id' + productId;
+                if (storageQuantity[idKey] !== undefined) {
+                    let previousValue = parseInt(storageQuantity[idKey]);
+                    if (currentValue > previousValue) {
+                        isExceedQuantity = true;
+                        remainValue = previousValue; // Lưu lại số lượng tồn kho để hiển thị
+                    }
+                }
+            });
+
+            // Hiển thị cảnh báo nếu vượt quá
+            if (isExceedQuantity) {
+                cartWarning.style.display = 'flex';
+                const warningText = cartWarning.querySelector('.cart-warning-text');
+                warningText.textContent = `Số lượng bạn muốn mua vượt quá số hàng hiện có! (còn lại ${remainValue})`;
+            } else {
+                cartWarning.style.display = 'none';
+            }
+
+            // Nếu có ô nhập nào thay đổi và không có ô nào vượt quá số lượng tồn kho
+            if (isModified && !isExceedQuantity) {
+                updateCartButton.disabled = false;
+                updateCartButton.classList.add('active');
+                updateCartButton.classList.remove('disabled');
+                updateCartButton.classList = 'btn-update';
+                wrap.classList.remove('cursor-disable');
+            } else {
+                updateCartButton.disabled = true;
+                updateCartButton.classList.add('disabled');
+                updateCartButton.classList.remove('active');
+                updateCartButton.classList = 'btn btn-dark btn-lg';
+                wrap.classList.add('cursor-disable');
+            }
+        }
+
+        // Gắn sự kiện khi người dùng thay đổi giá trị ô nhập
+        quantityInputs.forEach(input => {
+            input.addEventListener('input', checkQuantityChange);
+        });
+
+        // Kiểm tra lần đầu khi trang load
+        checkQuantityChange();
+    });
+</script>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const updateCartButton = document.getElementById('button-update');
+        const quantityInputs = document.querySelectorAll('.quantity-input');
+
+
+        // Hàm thu thập dữ liệu số lượng sản phẩm
+        function gatherQuantities() {
+            const quantities = [];
+
+            quantityInputs.forEach(input => {
+                const productId = input.getAttribute('data-product-id');
+                const quantity = input.value;
+                quantities.push({ ProductId: parseInt(productId), Quantity: parseInt(quantity) });
+            });
+
+            return quantities;
+        }
+
+        // Sự kiện nhấn nút "Update Cart"
+        updateCartButton.addEventListener('click', function () {
+            const model = gatherQuantities();
+
+            // Gửi dữ liệu đến máy chủ qua AJAX (fetch)
+            fetch('/Cart-Update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ UpdateItem: model })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Nếu thành công, có thể cập nhật lại giao diện hoặc thông báo cho người dùng
+                    alert('Giỏ hàng đã được cập nhật!');
+                    if(data.reload) {
+                        window.location.href = '/Cart';
+                    }
+                    else {
+                        window.location.reload();
+                    }
+                } else {
+                    alert('Có lỗi xảy ra, vui lòng thử lại.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra!');
+            });
+        });
+    });
+</script>
+

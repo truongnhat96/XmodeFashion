@@ -1,0 +1,74 @@
+@model SignupModel
+@{
+    ViewData["Title"] = "Đăng ký";
+}
+
+
+
+<form method="post" class="signup-form" style="border:1px solid #ccc">
+    @Html.AntiForgeryToken()
+    <div class="container">
+        <h1>Đăng ký</h1>
+        <p>Vui lòng điền vào biểu mẫu để tạo tài khoản mới.</p>
+        <hr>
+
+        <label for="Username"><b>Tên người dùng</b></label>
+        <input class="inp" type="text" placeholder="Tên người dùng" asp-for="Username" required>
+        <span asp-validation-for="Username" class="text-danger small"></span>
+
+        <label for="DisplayName"><b>Tên hiển thị</b></label>
+        <input type="text" placeholder="Tên hiển thị" class="inp" asp-for="DisplayName" required>
+        <span asp-validation-for="DisplayName" class="text-danger small"></span>
+
+        <label for="Email"><b>Email</b></label>
+        <input class="inp" type="email" placeholder="Địa chỉ email" asp-for="Email" required>
+        <span asp-validation-for="Email" class="text-danger small"></span>
+
+        <label for="Password"><b>Mật khẩu</b></label>
+        <div class="password-wrapper">
+            <input class="inp" type="password" placeholder="Mật khẩu" asp-for="Password" id="signupPassword" required>
+            <button type="button" class="toggle-password" data-target="signupPassword" title="Hiện/Ẩn mật khẩu">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+        <span asp-validation-for="Password" class="text-danger small"></span>
+
+        <label for="ConfirmPassword"><b>Xác nhận mật khẩu</b></label>
+        <div class="password-wrapper">
+            <input class="inp" type="password" placeholder="Xác nhận mật khẩu" asp-for="ConfirmPassword" id="signupConfirmPassword" required>
+            <button type="button" class="toggle-password" data-target="signupConfirmPassword" title="Hiện/Ẩn mật khẩu">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+        <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+
+        <p>Khi đăng ký, bạn đã đồng ý với <a href="/home/privacy" style="color:dodgerblue; text-decoration:none">Điều khoản dịch vụ và chính sách Quyền riêng tư</a>.</p>
+
+        <div class="clearfix">
+            <button type="submit" class="signupbtn">ĐĂNG KÝ</button>
+            <button type="button" class="cancelbtn" onclick="location.href='/'">THOÁT</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll('.toggle-password').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var input = document.getElementById(this.getAttribute('data-target'));
+                var icon = this.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        });
+    </script>
+}
+

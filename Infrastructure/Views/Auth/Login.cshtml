@@ -1,0 +1,103 @@
+@model LoginModel
+@{
+    ViewData["Title"] = "Đăng nhập";
+    var loginErrorMessage = Html.ViewContext.ModelState["LoginError"]?.Errors.FirstOrDefault()?.ErrorMessage;
+    var message = ViewBag.Message as string;
+}
+@if (!string.IsNullOrWhiteSpace(loginErrorMessage))
+{
+    <div class="ts-toast" data-truongshop-toast="1" data-ts-toast-type="error" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="ts-toast__icon" aria-hidden="true">
+            <i class="fa-solid fa-circle-exclamation"></i>
+        </div>
+        <div class="ts-toast__message">
+            <div class="ts-toast__title">Thất bại!</div>
+            <div class="ts-toast__content">@loginErrorMessage</div>
+        </div>
+        <button type="button" class="ts-toast__close" aria-label="Đóng thông báo">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="ts-toast" data-truongshop-toast="1" data-ts-toast-type="success" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="ts-toast__icon" aria-hidden="true">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="ts-toast__message">
+            <div class="ts-toast__title">Thành công!</div>
+            <div class="ts-toast__content">@message</div>
+        </div>
+        <button type="button" class="ts-toast__close" aria-label="Đóng thông báo">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+}
+
+<div class="d-flex border fix border-bottom justify-content-center align-items-center">
+    <form asp-action="Login" method="post" class="form">
+        <h2 class="form-title">Chào mừng trở lại.</h2>
+
+        <div class="brutalist-container" style="margin-bottom: 53px; margin-top: 45px;">
+            <input name="Username" 
+                   id="xm-username" autocomplete="username" placeholder="Tên đăng nhập"
+                   class="brutalist-input smooth-type"
+                   type="text" required/>
+            <label for="xm-username" class="brutalist-label">Tên tài khoản</label>
+        </div>
+
+        <div class="brutalist-container">
+            <input name="Password"
+                   id="password"
+                   autocomplete="current-password" placeholder="Mật khẩu"
+                   class="brutalist-input smooth-type"
+                   type="password" required/>
+            <label for="password" class="brutalist-label">Mật khẩu</label>
+            <button type="button" class="xm-text-button" id="togglePassword" aria-label="Hiện hoặc ẩn mật khẩu">Hiện / Ẩn</button>
+        </div>
+
+        <!-- -->
+        <div class="checkbox-wrapper-46">
+            <input type="checkbox" id="cbx-RememberMe" name="IsRememberLoginInfor" class="inp-cbx" value="true"/>
+            <label for="cbx-RememberMe" class="cbx">
+                <span>
+                    <svg viewBox="0 0 12 10" height="10px" width="12px">
+                        <polyline points="1.5 6 4.5 9 10.5 1"></polyline>
+                    </svg>
+                </span><span>Lưu thông tin đăng nhập</span>
+            </label>
+        </div>
+
+
+        <button type="submit" class="xm-button xm-wide">
+            
+            
+            <span class="front"> Đăng Nhập </span>
+        </button>
+
+        <div class="form-text">
+            <p class="signup-link">
+                Chưa có tài khoản?
+                <a href="/Signup">Đăng ký</a>
+            </p>
+        </div>
+    </form>
+</div>
+
+
+<script>
+        const passwordInput = document.getElementById('password');
+    const togglePassword = document.getElementById('togglePassword');
+
+    togglePassword.addEventListener('click', () => {
+        // Toggle the type attribute
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+
+        // Toggle the eye icon
+        togglePassword.classList.toggle('fa-eye');
+        togglePassword.classList.toggle('fa-eye-slash');
+    });
+</script>

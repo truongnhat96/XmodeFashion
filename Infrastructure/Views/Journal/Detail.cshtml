@@ -1,0 +1,3 @@
+@model Infrastructure.Data.Fashion.FashionPost
+@{ ViewData["Title"] = Model.Title; }
+<article class="xm-section xm-reading"><p class="xm-eyebrow">TẠP CHÍ XMODE</p><h1>@Model.Title</h1><p>@Model.CreatedAt.ToString("dd/MM/yyyy") · @Model.User.DisplayName</p>@if(!string.IsNullOrEmpty(Model.ImageUrl)) { <img src="@Model.ImageUrl" alt="@Model.Title" /> }<div style="white-space:pre-wrap">@Model.Content</div><a href="/Posts">Quay lại tạp chí</a></article>

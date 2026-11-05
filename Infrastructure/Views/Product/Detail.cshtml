@@ -1,0 +1,628 @@
+@using System.Security.Claims
+@model ProductModel
+@{
+    Random rdImage = new Random();
+
+    // Tạo URL đầy đủ của trang post, dùng cho share links
+    var productUrl = $"https://{Context.Request.Host}{Context.Request.Path}";
+    var encodedUrl = Uri.EscapeDataString(productUrl);
+    var encodedTitle = Uri.EscapeDataString(Model.Name);
+
+    Console.WriteLine("Product URL: " + productUrl);
+    var productImageUrl = productUrl.Replace(Context.Request.Path, $"/uploads/products/{Model.Image}");
+    Console.WriteLine("Product Image URL: " + productImageUrl);
+
+    var description = Model.Description.Length <= 150 
+        ? Model.Description 
+        : Model.Description.Substring(0, 150).TrimEnd() + "...";
+
+    var userId = Convert.ToInt32(User.Identity?.IsAuthenticated == true ? User.FindFirst(ClaimTypes.Sid)?.Value : "0");
+    var isRated = Model.Reviews.Any(r => r.UserId == userId);
+}
+
+
+@section MetaTags {
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="TruongShop" />
+    <meta property="og:url" content="@productUrl" />
+    <meta property="og:title" content="@Model.Name" />
+    <meta property="og:description" content="@description" />
+    <meta property="og:image" content="@productImageUrl" />
+    <meta property="og:image:secure_url" content="@productImageUrl" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@Model.Name" />
+    <meta name="twitter:description" content="@description" />
+    <meta name="twitter:image" content="@productImageUrl" />
+}
+
+
+
+
+<div class="product-container">
+    <div class="product-image">
+        <img onerror="this.src='/images/not-found.png'" src="/uploads/products/@Model.Image" class="img-container @(Model.Quantity <= 0 ? "out-of-stock-filter" : "")">
+        @if (Model.Quantity <= 0)
+        {
+            <div class="out-of-stock-label">Hết Hàng</div>
+        }
+    </div>
+    <div class="product-info">
+        <h1>@Model.Name</h1>
+        @for (int i = 0; i < Model.Rating; i++)
+        {
+            <span class="star">⭐</span>
+        }
+        <p class="price">
+            @if (Model.oldPrice > Model.Price)
+            {
+                <span class="old-price">@Model.oldPrice.ToString("c0", new CultureInfo("vi-VN"))</span>
+            }
+            <span class="new-price">@Model.Price.ToString("c0", new CultureInfo("vi-VN"))</span>
+        </p>
+        <div class="product-details">
+            <p><strong>Thương hiệu:</strong> @Model.Brand</p>
+            <p><strong>Tình trạng:</strong> @(Model.Quantity > 0 ? "Còn hàng" : "Hết hàng")</p>
+            <p><strong>Giao hàng:</strong> @(Model.CategoryId == 3 ? "Sản phẩm" : "Key") và Hướng dẫn sẽ được gửi qua email/Zalo/Facebook cho bạn sau khi bạn thanh toán.</p>
+            <p><strong>Đã bán:</strong> @Model.Sold</p>
+            @{
+                int idx = Model.Name.IndexOf("năm", StringComparison.OrdinalIgnoreCase);
+                if(idx >= 0)
+                {
+                    <p><strong>Thời hạn giấy phép:</strong> @(idx - 2 >= 0 ? Model.Name.Substring(idx-2, 5) : "")</p>
+                }
+                else if (Model.CategoryId == 3)
+                {
+                    <p><strong>Thời hạn giấy phép:</strong> 1 tháng</p>
+                }
+                else
+                {
+                    <p><strong>Thời hạn giấy phép:</strong> Trọn đời</p>
+                }
+            }
+        </div>
+        <br />
+        <hr />
+        <div class="category-container">
+            <p><strong>Danh mục: </strong><a href="/category/@Model.CategoryId" class="category-name">@Model.CategoryName</a></p>
+        </div>
+        <hr />
+        <!-- Container chứa ô số lượng và nút Thêm vào giỏ hàng cùng hàng -->
+        <form action="@Url.RouteUrl("cart", new { productId = Model.Id, productName = Model.Name })">
+            <div class="purchase-container">
+
+                <input type="number" id="quantity" name="quantity" value="1" inputmode="numeric" class="quantity-input" min="1">
+                <!-- -->
+                <button class="cartBtn" @(Model.Quantity <= 0 ? "disabled" : string.Empty)>
+                    <svg class="cart" fill="white" viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg"><path d="M0 24C0 10.7 10.7 0 24 0H69.5c22 0 41.5 12.8 50.6 32h411c26.3 0 45.5 25 38.6 50.4l-41 152.3c-8.5 31.4-37 53.3-69.5 53.3H170.7l5.4 28.5c2.2 11.3 12.1 19.5 23.6 19.5H488c13.3 0 24 10.7 24 24s-10.7 24-24 24H199.7c-34.6 0-64.3-24.6-70.7-58.5L77.4 54.5c-.7-3.8-4-6.5-7.9-6.5H24C10.7 48 0 37.3 0 24zM128 464a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm336-48a48 48 0 1 1 0 96 48 48 0 1 1 0-96z"></path></svg>
+                    THÊM VÀO GIỎ HÀNG
+                    <svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 640 512" class="product"><path d="M211.8 0c7.8 0 14.3 5.7 16.7 13.2C240.8 51.9 277.1 80 320 80s79.2-28.1 91.5-66.8C413.9 5.7 420.4 0 428.2 0h12.6c22.5 0 44.2 7.9 61.5 22.3L628.5 127.4c6.6 5.5 10.7 13.5 11.4 22.1s-2.1 17.1-7.8 23.6l-56 64c-11.4 13.1-31.2 14.6-44.6 3.5L480 197.7V448c0 35.3-28.7 64-64 64H224c-35.3 0-64-28.7-64-64V197.7l-51.5 42.9c-13.3 11.1-33.1 9.6-44.6-3.5l-56-64c-5.7-6.5-8.5-15-7.8-23.6s4.8-16.6 11.4-22.1L137.7 22.3C155 7.9 176.7 0 199.2 0h12.6z"></path></svg>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="description-container">
+    <button class="tab-btn @(TempData["active"] == null ? "active" : "")" onclick="showTab('description', this)">MÔ TẢ</button>
+    <button class="tab-btn @TempData["active"]" onclick="showTab('reviews', this)">ĐÁNH GIÁ (@Model.Reviews.Count)</button>
+
+    <div id="description" class="tab-content @(TempData["active"] == null ? "active" : "")">
+        <div class="product-description">
+            @(Html.Raw(Model.Description))
+        </div>
+    </div>
+
+    <div id="reviews" class="tab-content @TempData["active"]">
+        <div class="reviews-container">
+            <!-- Danh sách các bình luận và rating -->
+            @if (Model.Reviews.Count > 0)
+            {
+                for (int i = 0; i < Model.Reviews.Count; i++)
+                {
+                    <div class="review-item" id="review-@Model.Reviews[i].Id">
+                        <div class="review-header">
+                            <div class="review-user">
+                                <!-- Ảnh đại diện nếu có, hoặc icon user -->
+                                <img src="/images/@(rdImage.Next(1,5)).png" alt="User Avatar" class="user-avatar" />
+                                <span class="user-name">@Model.ReviewerName[i]</span>
+                            </div>
+                            <div class="review-date">@Model.Reviews[i].CreatedAt.ToLocalTime().Day Tháng @Model.Reviews[i].CreatedAt.ToLocalTime().Month, @Model.Reviews[i].CreatedAt.ToLocalTime().Year</div>
+                        </div>
+                        <div class="review-body">
+                            <p>@Model.Reviews[i].Comment</p>
+                            <!-- Hiển thị rating bằng các icon sao -->
+                            <div class="review-rating">
+                                @for (int j = 0; j < Model.Reviews[i].Rating; j++)
+                                {
+                                    <svg style="display: inline-block;" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="gold" fill="gold" viewBox="0 0 24 24" height="24" width="24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                }
+                                @if (Model.Reviews[i].Rating < 5)
+                                {
+                                    for (int k = 5 - Model.Reviews[i].Rating; k > 0; k--)
+                                    {
+                                        <svg style="display: inline-block;" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#ccc" fill="none" viewBox="0 0 24 24" height="24" width="24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="empty-comment">Chưa có đánh giá nào cho sản phẩm này</p>
+                <span class="first-cmt">Hãy là người đầu tiên đánh giá "@Model.Name"</span>
+            }
+
+            <!-- ... Các đánh giá khác ... -->
+            <!-- Form cho người dùng thêm đánh giá -->
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                @if (isRated)
+                {
+                    var userReview = Model.Reviews.First(r => r.UserId == userId);
+                    <form asp-action="EditComment" asp-controller="User" method="post" class="review-form" id="editReviewForm">
+                        <h3 style="margin-top: 15px;">Chỉnh sửa đánh giá của bạn</h3>
+                        <textarea name="comment" class="review-textarea" placeholder="Viết chỉnh sửa..." rows="4">@userReview.Comment</textarea>
+                        
+                        <input type="hidden" name="productId" value="@Model.Id" />
+                        <input type="hidden" name="id" value="@userReview.Id" />
+                        
+                        <div class="rating">
+                            @for (int r = 5; r >= 1; r--)
+                            {
+                                @if (userReview.Rating == r)
+                                {
+                                    <input value="@r" name="rating" id="edit_star@(r)" type="radio" checked="checked" @(r == 1 ? "required" : "") />
+                                }
+                                else
+                                {
+                                    <input value="@r" name="rating" id="edit_star@(r)" type="radio" @(r == 1 ? "required" : "") />
+                                }
+                                <label title="@r stars" for="edit_star@(r)">
+                                    <svg stroke-linejoin="round"
+                                         stroke-linecap="round"
+                                         stroke-width="2"
+                                         stroke="#000000"
+                                         fill="none"
+                                         viewBox="0 0 24 24"
+                                         height="30"
+                                         width="30"
+                                         xmlns="http://www.w3.org/2000/svg"
+                                         class="svgOne">
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                    </svg>
+                                    <svg stroke-linejoin="round"
+                                         stroke-linecap="round"
+                                         stroke-width="2"
+                                         stroke="#000000"
+                                         fill="none"
+                                         viewBox="0 0 24 24"
+                                         height="30"
+                                         width="30"
+                                         xmlns="http://www.w3.org/2000/svg"
+                                         class="svgTwo">
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                    </svg>
+                                    <div class="ombre"></div>
+                                </label>
+                            }
+                        </div>
+
+                        <button class="review-btn">
+                            <span>
+                                <svg height="24"
+                                     width="24"
+                                     viewBox="0 0 24 24"
+                                     xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M0 0h24v24H0z" fill="none"></path>
+                                    <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" fill="currentColor"></path>
+                                </svg>
+                                Cập nhật đánh giá
+                            </span>
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-action="Comment" asp-controller="User" method="post" class="review-form" id="reviewForm">
+
+                    <h3 style="margin-top: 15px;">Để lại đánh giá của bạn</h3>
+                    <textarea name="comment"
+                              class="review-textarea"
+                              rows="4"
+                              placeholder="Viết đánh giá của bạn..."></textarea>
+
+                    <input type="hidden" name="productId" value="@Model.Id" />
+                    <!-- Rating -->
+                    <div class="rating">
+                        <input value="5" name="rating" id="star5" type="radio" />
+                        <label title="5 stars" for="star5">
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgOne">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgTwo">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <div class="ombre"></div>
+                        </label>
+
+                        <input value="4" name="rating" id="star4" type="radio" />
+                        <label title="4 stars" for="star4">
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgOne">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgTwo">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <div class="ombre"></div>
+                        </label>
+
+                        <input value="3" name="rating" id="star3" type="radio" />
+                        <label title="3 stars" for="star3">
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgOne">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgTwo">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <div class="ombre"></div>
+                        </label>
+
+                        <input value="2" name="rating" id="star2" type="radio" />
+                        <label title="2 stars" for="star2">
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgOne">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgTwo">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <div class="ombre"></div>
+                        </label>
+
+                        <input value="1" name="rating" id="star1" type="radio" required />
+                        <label title="1 star" for="star1">
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgOne">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <svg stroke-linejoin="round"
+                                 stroke-linecap="round"
+                                 stroke-width="2"
+                                 stroke="#000000"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 height="30"
+                                 width="30"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 class="svgTwo">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                            <div class="ombre"></div>
+                        </label>
+                    </div>
+
+                    <button class="review-btn">
+                        <span>
+                            <svg height="24"
+                                 width="24"
+                                 viewBox="0 0 24 24"
+                                 xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 0h24v24H0z" fill="none"></path>
+                                <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z" fill="currentColor"></path>
+                            </svg>
+                            Thêm đánh giá
+                        </span>
+                    </button>
+
+
+                </form>
+                }
+            }
+            else
+            {
+                <p class="empty-comment">Bạn phải <a href="/Login" class="must-login">đăng nhập</a> để đánh giá sản phẩm</p>
+            }
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function showTab(tabName, element) {
+        // Ẩn tất cả nội dung tab
+        document.querySelectorAll('.tab-content').forEach(function (tab) {
+            tab.classList.remove('active');
+        });
+        // Hiển thị nội dung của tab được chọn
+        document.getElementById(tabName).classList.add('active');
+
+        // Bỏ trạng thái active của tất cả các nút tab
+        document.querySelectorAll('.tab-btn').forEach(function (btn) {
+            btn.classList.remove('active');
+        });
+        // Đánh dấu nút được chọn
+        element.classList.add('active');
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const reviewForm = document.getElementById("reviewForm");
+        if (reviewForm) {
+            reviewForm.addEventListener("submit", function (e) {
+                e.preventDefault();
+
+                // Lấy button submit để ngăn spam
+                const submitBtn = reviewForm.querySelector('.review-btn');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('disabled');
+                }
+
+                const formData = new FormData(reviewForm);
+                fetch(reviewForm.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let starsHtml = '\n';
+                        for (let j = 0; j < data.rating; j++) {
+                            starsHtml += '                                    <svg display="inline-block" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="gold" fill="gold" viewBox="0 0 24 24" height="24" width="24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>\n';
+                        }
+                        if (data.rating < 5) {
+                            for (let k = 5 - data.rating; k > 0; k--) {
+                                starsHtml += '                                    <svg display="inline-block" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#ccc" fill="none" viewBox="0 0 24 24" height="24" width="24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>\n';
+                            }
+                        }
+
+                        const rdImage = Math.floor(Math.random() * 4) + 1;
+
+                        const comment = data.comment ? data.comment : '';
+
+                        const reviewHtml = `
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="review-user">
+                                <!-- Ảnh đại diện nếu có, hoặc icon user -->
+                                <img src="/images/${rdImage}.png" alt="User Avatar" class="user-avatar" />
+                                <span class="user-name">${data.reviewerName}</span>
+                            </div>
+                            <div class="review-date">${data.createdAt}</div>
+                        </div>
+                        <div class="review-body">
+                            <p>${comment}</p>
+                            <!-- Hiển thị rating bằng các icon sao -->
+                            <div class="review-rating">${starsHtml}                            </div>
+                        </div>
+                    </div>
+                        `;
+
+                        // Parse the HTML string into actual DOM elements
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(reviewHtml, 'text/html');
+                        const newReview = doc.body.firstElementChild;
+
+                        // Copy ASP.NET Core CSS Isolation attribute (starts with 'b-') so scoped CSS works
+                        const reviewsContainer = document.querySelector('.reviews-container');
+                        if (reviewsContainer) {
+                            const scopeAttr = Array.from(reviewsContainer.attributes).find(a => a.name.startsWith('b-'));
+                            if (scopeAttr) {
+                                newReview.setAttribute(scopeAttr.name, '');
+                                newReview.querySelectorAll('*').forEach(el => el.setAttribute(scopeAttr.name, ''));
+                            }
+                        }
+
+                        // Xoá thông báo "chưa có đánh giá"
+                        const emptyComment = document.querySelector('.empty-comment');
+                        if (emptyComment) emptyComment.remove();
+                        const firstCmt = document.querySelector('.first-cmt');
+                        if (firstCmt) firstCmt.remove();
+
+                        // Chèn comment mới lên đầu danh sách (trước form)
+                        const reviewFormElem = document.getElementById('reviewForm');
+                        reviewFormElem.parentNode.insertBefore(newReview, reviewFormElem);
+
+                        // Reset form
+                        reviewForm.reset();
+
+                        // Cập nhật số lượng đếm trên tab
+                        const reviewTabBtns = document.querySelectorAll('.tab-btn');
+                        reviewTabBtns.forEach(btn => {
+                            if (btn.innerText.includes('ĐÁNH GIÁ')) {
+                                let currentCountMatch = btn.innerText.match(/\((\d+)\)/);
+                                if (currentCountMatch) {
+                                    let newCount = parseInt(currentCountMatch[1]) + 1;
+                                    btn.innerText = 'ĐÁNH GIÁ (' + newCount + ')';
+                                }
+                            }
+                        });
+                    } else {
+                        alert("Có lỗi xảy ra khi thêm đánh giá.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Có lỗi xảy ra khi thêm đánh giá.");
+                });
+            });
+        }
+
+        const editReviewForm = document.getElementById("editReviewForm");
+        if (editReviewForm) {
+            editReviewForm.addEventListener("submit", function (e) {
+                e.preventDefault();
+
+                const submitBtn = editReviewForm.querySelector('.review-btn');
+                const commentInput = editReviewForm.querySelector('textarea[name="comment"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.style.opacity = '0.7';
+                }
+
+                const formData = new FormData(editReviewForm);
+                fetch(editReviewForm.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const reviewId = formData.get('id');
+                        const existingReview = document.getElementById('review-' + reviewId);
+                        
+                        if (existingReview) {
+                            existingReview.querySelector('.review-body p').textContent = data.comment;
+                            
+                            let starsHtml = '\n';
+                            for (let j = 0; j < data.rating; j++) {
+                                starsHtml += '                                    <svg display="inline-block" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="gold" fill="gold" viewBox="0 0 24 24" height="24" width="24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>\n';
+                            }
+                            if (data.rating < 5) {
+                                for (let k = 5 - data.rating; k > 0; k--) {
+                                    starsHtml += '                                    <svg display="inline-block" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#ccc" fill="none" viewBox="0 0 24 24" height="24" width="24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>\n';
+                                }
+                            }
+                            existingReview.querySelector('.review-rating').innerHTML = starsHtml;
+                            existingReview.querySelector('.review-date').textContent = data.createdAt;
+                        }
+                        commentInput.value = '';
+                        commentInput.focus();
+                    } else {
+                        alert("Có lỗi xảy ra khi cập nhật đánh giá.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Có lỗi xảy ra khi cập nhật đánh giá.");
+                })
+                .finally(() => {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '1';
+                    }
+                    alert("Cập nhật đánh giá thành công.");
+                });
+            });
+        }
+    });
+</script>
+
+@section Scripts {
+    <script type="application/ld+json">
+    {
+      "@@context": "https://schema.org/",
+      "@@type": "Product",
+      "name": "@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Name).Trim('"'))",
+      "image": [
+        "@productImageUrl"
+      ],
+      "description": "@Html.Raw(System.Text.Json.JsonSerializer.Serialize(description).Trim('"'))",
+      "sku": "PROD-@Model.Id",
+      "brand": {
+        "@@type": "Brand",
+        "name": "@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Brand).Trim('"'))"
+      },
+      "offers": {
+        "@@type": "Offer",
+        "url": "@productUrl",
+        "priceCurrency": "VND",
+        "price": "@Model.Price",
+        "availability": "@(Model.Quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock")"
+      }
+      @if (Model.Reviews.Count > 0)
+      {
+          <text>
+          ,"aggregateRating": {
+            "@@type": "AggregateRating",
+            "ratingValue": "@Model.Rating",
+            "reviewCount": "@Model.Reviews.Count"
+          }
+          </text>
+      }
+    }
+    </script>
+}

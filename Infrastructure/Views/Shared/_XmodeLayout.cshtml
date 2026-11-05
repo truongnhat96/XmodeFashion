@@ -1,0 +1,50 @@
+@{ var admin = Context.Request.Path.StartsWithSegments("/xmode/admin"); }
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] · XMODE</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content="Xmode — Thời trang mỗi ngày, theo cách của bạn." />
+    @await RenderSectionAsync("MetaTags", required: false)
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/summernote/summernote-bs5.min.css" />
+    <link rel="stylesheet" href="~/Infrastructure.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/xmode.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="xm @(admin ? "xm-admin" : "")">
+<a class="xm-skip" href="#main">Đến nội dung</a>
+<div class="xm-announcement">XMODE / EVERYDAY ESSENTIALS</div>
+<header class="xm-header">
+    <button class="xm-menu-button" type="button" data-menu aria-label="Mở menu" aria-expanded="false">☰</button>
+    <a class="xm-logo" href="/" aria-label="Xmode trang chủ">XMODE<span>®</span></a>
+    <nav class="xm-nav" aria-label="Điều hướng chính">
+        <a href="/xmode/catalog?audience=Nam">Nam</a><a href="/xmode/catalog?audience=Nữ">Nữ</a><a href="/xmode/catalog?audience=Unisex">Unisex</a><a href="/xmode/catalog?new=1">Hàng mới</a><a href="/xmode/catalog">Bộ sưu tập</a><a href="/Posts">Tạp chí</a>
+    </nav>
+    <div class="xm-actions"><a href="/xmode/catalog?search=1" aria-label="Tìm kiếm">Tìm kiếm</a>
+    @if (User.Identity?.IsAuthenticated == true) { <a href="/xmode/orders">Đơn hàng</a><form action="/Logout" method="post">@Html.AntiForgeryToken()<button class="xm-text-button" type="submit">Đăng xuất</button></form> } else { <a href="/Login">Tài khoản</a> }
+    <a href="/xmode/cart">Giỏ <span data-cart-count>0</span></a></div>
+</header>
+@if (admin || User.IsInRole("Admin")) {
+    <nav class="xm-admin-nav" aria-label="Quản trị"><strong>XMODE STUDIO</strong><a href="/xmode/admin/products">Sản phẩm</a><a href="/xmode/admin/categories">Danh mục</a><a href="/xmode/admin/orders">Đơn hàng</a><a href="/xmode/admin/content">Trang chủ</a><a href="/xmode/admin/size-charts">Bảng size</a><a href="/xmode/admin/settings">Thiết lập</a><a href="/BlogList">Bài viết</a><a href="/">Xem cửa hàng ↗</a></nav>
+}
+<div id="xm-notice" class="xm-notice" role="status" hidden></div>
+<main id="main" class="@((ViewContext.View.Path.Contains("/Xmode/") || ViewContext.View.Path.Contains("/Home/Index")) ? "" : "xm-legacy")">@RenderBody()</main>
+<footer class="xm-footer"><div><a class="xm-logo" href="/">XMODE<span>®</span></a><p>Ít hơn. Chất hơn. Là chính bạn.</p></div><div><h2>Khám phá</h2><a href="/xmode/catalog">Tất cả sản phẩm</a><a href="/xmode/catalog?new=1">Thiết kế mới</a><a href="/Posts">Tạp chí</a></div><div><h2>Hướng dẫn</h2><a href="/xmode/guide">Chọn size & bảo quản</a><a href="/Home/Privacy">Chính sách bảo mật</a></div><div class="xm-copyright">© @DateTime.Now.Year XMODE <span>EVERYDAY, YOUR WAY.</span></div></footer>
+<dialog id="xm-dialog" aria-labelledby="xm-dialog-title"><button type="button" class="xm-close" data-close aria-label="Đóng">×</button><div id="xm-dialog-content"></div></dialog>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/lib/summernote/summernote-bs5.min.js"></script>
+<div id="xm-antiforgery" hidden>@Html.AntiForgeryToken()</div>
+<script src="~/js/xmode.js" asp-append-version="true"></script>
+@if (ViewContext.View.Path.Contains("/Product/") || ViewContext.View.Path.Contains("/Cart/") || ViewContext.View.Path.Contains("/Payment/"))
+{
+    <script src="~/js/site.js" asp-append-version="true"></script>
+}
+@await RenderSectionAsync("AddProductQuantityInLocal", required: false)
+@await RenderSectionAsync("UpdateQuantityProductInLocal", required: false)
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

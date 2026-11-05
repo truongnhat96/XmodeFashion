@@ -1,0 +1,47 @@
+@model PostModel
+@{
+    ViewData["Title"] = "Tạp chí Xmode";
+}
+
+<div class="main-box">
+    <section class="content">
+        <div class="posts">
+            @if (Model.Posts.Count == 0)
+            {
+                <h2 class="empty-comment">Không tìm thấy bài viết nào</h2>
+            }
+            @foreach(var post in Model.Posts)
+            {
+                <div class="post">
+                    <a href="/Post/@post.Id" class="post-link">
+                        <div class="post-image-container">
+                            <div class="category-label">TẠP CHÍ XMODE</div> <!-- Dòng chữ Thủ Thuật Máy Tính -->
+                            <img onerror="this.src='/images/error-404.png'" src="/uploads/posts/@post.ImageUrl" alt="@post.Title" class="post-image">
+                            <div class="overlay"></div>
+                        </div>
+                    </a>
+                    <a href="/Post/@post.Id" class="post-title">@post.Title</a>
+                    <div class="post-meta">
+                        <hr />
+                        <span class="date-created">@post.CreatedAt.Day Tháng @post.CreatedAt.Month, @post.CreatedAt.Year</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+
+    <aside class="sidebar">
+       <form asp-action="PostView" method="get">
+            <div class="search-bars">
+                <input name="keyword" type="text" placeholder="Search..." class="search-inp">
+                <button class="search-button"><i class="fa fa-search"></i></button>
+            </div>
+       </form>
+
+        
+
+        
+
+        
+    </aside>
+</div>

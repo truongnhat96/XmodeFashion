@@ -1,0 +1,27 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: truongshop_web
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 3050
+
+
+      ConnectionStrings__FashionConnection: "${FASHION_CONNECTION_STRING:?Configure a SQL Server connection reachable from the container}"
+      CloudinarySettings__CloudName: "${CloudinarySettings__CloudName}"
+      CloudinarySettings__ApiKey: "${CloudinarySettings__ApiKey}"
+      CloudinarySettings__ApiSecret: "${CloudinarySettings__ApiSecret}"
+      TZ: "Asia/Ho_Chi_Minh"
+
+    volumes:
+      - uploads_data:/app/wwwroot/uploads
+      - dp_keys:/root/.aspnet/DataProtection-Keys
+    ports:
+      - "127.0.0.1:8005:3050"
+
+volumes:
+  uploads_data:
+  dp_keys:

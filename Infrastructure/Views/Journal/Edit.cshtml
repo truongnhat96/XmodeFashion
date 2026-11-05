@@ -1,0 +1,15 @@
+@model Infrastructure.Data.Fashion.FashionPost
+@{ ViewData["Title"] = "Bài viết"; }
+<section class="xm-section xm-reading"><h1>@(Model.Id == Guid.Empty ? "Thêm" : "Sửa") bài viết</h1><div asp-validation-summary="All" class="text-danger"></div><form method="post" action="@(Model.Id == Guid.Empty ? "/Article" : $"/Article/{Model.Id}")">@Html.AntiForgeryToken()<label>Tiêu đề<input name="title" value="@Model.Title" required maxlength="100"></label><label>Nội dung<textarea name="content" rows="16" required>@Model.Content</textarea></label><label>Ảnh bìa<select name="imageUrl" id="journal-image" data-selected="@Model.ImageUrl"><option value="">Không chọn ảnh</option></select></label><p>Quản lý ảnh trong mục <a href="/xmode/admin/content">Nội dung trang chủ</a>.</p><button class="xm-button">Lưu bài viết</button></form></section>
+@section Scripts {
+<script>
+    (async () => {
+        const select = document.querySelector('#journal-image');
+        try {
+            const response = await fetch('/api/xmode/admin/media');
+            if (!response.ok) throw new Error();
+            for (const item of await response.json()) select.add(new Option(item.alt || `Ảnh ${item.id}`, item.url, false, item.url === select.dataset.selected));
+        } catch { select.insertAdjacentText('afterend', ' Không thể tải thư viện ảnh.'); }
+    })();
+</script>
+}

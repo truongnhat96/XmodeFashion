@@ -1,0 +1,45 @@
+﻿@model string
+@{
+    DateTime orderDate = DateTime.Now;
+    double totalAmount = 0;
+    string orderCode = string.Empty; 
+
+    if (!string.IsNullOrEmpty(Model) && Model.Contains("|"))
+    {
+        var parts = Model.Split('|');
+        if (parts.Length == 2)
+        {
+            orderCode = parts[0];
+            double.TryParse(parts[1], out totalAmount);
+        }
+    }
+}
+
+<div class="main-container">
+    <!-- Thông báo đặt hàng thành công -->
+    <div class="icon-container text-center">
+        <img src="/images/success.png" width="150" height="150" />
+    </div>
+    <p class="status success">Giao dịch thành công!</p>
+    <div class="thank-you">Cảm ơn bạn. Đơn hàng của bạn đã được xử lý thành công.</div>
+    <p class="text-primary text-center"> Vui lòng kiểm tra email để biết thêm thông tin</p>
+    <!-- Thông tin đơn hàng -->
+    <div class="order-info">
+        <div>
+            <span class="label">Đơn hàng</span>
+            <span class="value">@orderCode</span>
+        </div>
+        <div>
+            <span class="label">Ngày</span>
+            <span class="value">Tháng @orderDate.Month @(orderDate.Day), @orderDate.Year</span>
+        </div>
+        <div>
+            <span class="label">Tổng cộng</span>
+            <span class="value highlight">@totalAmount.ToString("c0", new CultureInfo("vi-VN"))</span>
+        </div>
+        <div>
+            <span class="label">Phương thức thanh toán</span>
+            <span class="value"><strong>Thanh toán QR</strong></span>
+        </div>
+    </div>
+</div>

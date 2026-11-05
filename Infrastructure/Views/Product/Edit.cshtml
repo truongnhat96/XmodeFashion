@@ -1,0 +1,221 @@
+@model ProductModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Edit Product";
+    TempData["Price"] = Model.Price.ToString();
+    TempData["OldPrice"] = Model.oldPrice.ToString();
+    List<SelectListItem> items = [];
+    Model.CategoryList.ForEach(c =>
+    {
+        if (c.Id == Model.CategoryId)
+        {
+            items.Add(new SelectListItem(c.Name, c.Id.ToString(), true));
+        }
+        else
+        {
+            items.Add(new SelectListItem(c.Name, c.Id.ToString()));
+        }
+    });
+}
+
+<div class="justify-content-center">
+    @using (Html.BeginForm("Edit", "Product", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        <h3>Sửa thông tin sản phẩm</h3>
+        @if (TempData["Notify"] != null)
+        {
+            <div class="alert alert-success" role="alert">
+                @TempData["Notify"]
+            </div>
+            @section UpdateQuantityProductInLocal {
+              <script>
+                console.log(quantityKey);
+                let products = JSON.parse(localStorage.getItem(quantityKey))
+                if (products) {
+                    products['Id' + '@(Model.Id)'] = @(Model.Quantity)
+                    localStorage.setItem(quantityKey, JSON.stringify(products));
+                } else {
+                    console.error('No products found in localStorage');
+                }
+              </script>
+            }
+        }
+        <div class="form-group">
+            @Html.Label("Tên sản phẩm")
+            @Html.TextBox("Name", Model.Name, new { @class = "form-control", placeholder = "Nhập tên sản phẩm", required = true })
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Danh mục sản phẩm")
+            @Html.DropDownList("CategoryId", items, "Chọn danh mục")
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Thương hiệu")
+            @Html.TextBox("Brand", Model.Brand, new { @class = "form-control", placeholder = "Nhập thương hiệu" })
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Số lượng")
+            @Html.TextBox("Quantity", Model.Quantity, new { @class = "form-control", type = "number", placeholder = "Nhập số lượng", required = true })
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Đã bán")
+            @Html.TextBox("Sold", Model.Sold, new { @class = "form-control", type = "number", @readonly = "readonly" })
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Ngày nhập")
+            @Html.TextBox("Date_Import", Model.Date_Import.ToString("yyyy-MM-dd"), new { @class = "form-control", type = "date" })
+        </div>
+
+        <div class="form-group">
+            <label style="display:flex">Giá Gốc: @Model.oldPrice.ToString("c0", new CultureInfo("vi-VN"))</label>
+            @Html.Label("Giá hiện tại")
+            @Html.TextBox("Price", Model.Price, new { @class = "form-control", type = "number", step = "1", placeholder = "Nhập giá", required = true })
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Mã giảm giá (%)")
+            @Html.TextBox("Coupon", Model.Coupon, new { @class = "form-control", placeholder = "Mã giảm giá" })
+            <input type="number" asp-for="Discount" max="100" min="0" style="color: black; width: 60px;" step="1" />
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Mô tả")
+            @Html.TextArea("Description", Model.Description, new { @class = "form-control", rows = "4", placeholder = "Nhập mô tả sản phẩm" })
+        </div>
+        <div id="warning-message" class="text-danger" style="display: none;">
+            Nội dung quá lớn. Vui lòng giảm kích thước trước khi tiếp tục!
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Ảnh sản phẩm: ")
+            <label>@(!string.IsNullOrEmpty(Model.Image) ? "đã thêm ảnh" : "chưa thêm ảnh")</label>
+            <input asp-for=@(Model.ImageUrl) type="file" class="form-control" accept="image/*"/>
+        </div>
+        <br />
+        <button type="submit" class="btn btn-success">Cập nhật</button>
+        @* <a href="/EditAccountInfor/@Model.Id" class="btn btn-warning">Thêm thông tin tài khoản/key</a> *@
+        <a href="/Product-List" class="btn btn-danger">Thoát</a>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            const maxSize = 2.5 * 1024 * 1024; // 2,5MB in bytes
+            let currentImages = [];
+
+            function extractImageUrls(html) {
+                let urls = [];
+                let regex = /<img[^>]+src=["']([^"']+)["']/gi;
+                let match;
+                while ((match = regex.exec(html)) !== null) {
+                    urls.push(match[1]);
+                }
+                return urls;
+            }
+
+            $('#Description').summernote({
+                placeholder: 'Nhập mô tả sản phẩm...',
+                height: 350,
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'underline', 'clear']],
+                    ['fontname', ['fontname']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link', 'picture', 'video']],
+                    ['view', ['fullscreen', 'codeview', 'help']],
+                ],
+                callbacks: {
+                    onInit: function() {
+                        currentImages = extractImageUrls($('#Description').summernote('code'));
+                    },
+                    onImageUpload: function (files) {
+                        for (let i = 0; i < files.length; i++) {
+                            uploadImageToCloudinary(files[i]);
+                        }
+                    }
+                }
+            });
+
+            function deleteImageFromCloudinary(url) {
+                $.ajax({
+                    url: '/SummernoteDeleteImage',
+                    type: 'POST',
+                    data: { url: url },
+                    success: function (response) {
+                        console.log("Ảnh đã được xóa khỏi Cloudinary.");
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Lỗi khi xóa ảnh:", error);
+                    }
+                });
+            }
+
+            function uploadImageToCloudinary(file) {
+                var data = new FormData();
+                data.append("file", file);
+                data.append("folder", "products");
+                $.ajax({
+                    url: '/SummernoteUploadImage',
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    data: data,
+                    type: "post",
+                    success: function (response) {
+                        if(response && response.url) {
+                            var imgNode = $('<img>').attr('src', response.url);
+                            $('#Description').summernote('insertNode', imgNode[0]);
+                        } else {
+                            alert("Có lỗi khi upload ảnh.");
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert(xhr.responseText || error || "Lỗi khi upload ảnh");
+                    }
+                });
+            }
+
+             // Lắng nghe sự kiện thay đổi nội dung
+            $('#Description').on('summernote.change', function () {
+                let content = $('#Description').summernote('code');  // Lấy mã HTML của nội dung
+                
+                // Track current images to catch keyboard delete
+                let newImages = extractImageUrls(content);
+                let deletedImages = currentImages.filter(img => !newImages.includes(img));
+                deletedImages.forEach(img => {
+                    deleteImageFromCloudinary(img);
+                });
+                currentImages = newImages;
+
+                let contentSize = new Blob([content]).size;  // Tính kích thước nội dung
+
+                console.log("Description size: " + contentSize + " bytes");
+
+                // Kiểm tra nếu nội dung vượt quá 2MB
+                if (contentSize > maxSize) {
+                    // Thêm lớp invalid-input (bôi đỏ viền)
+                    $('#Description').addClass('invalid-input').removeClass('valid-input');
+                    // Hiển thị cảnh báo
+                    $('#warning-message').show();
+                    // Vô hiệu hóa nút submit
+                    $('#submit-button').prop('disabled', true);
+                } else {
+                    // Xóa lớp invalid-input và thêm lớp valid-input (reset viền)
+                    $('#Description').removeClass('invalid-input').addClass('valid-input');
+                    // Ẩn cảnh báo
+                    $('#warning-message').hide();
+                    // Kích hoạt nút submit
+                    $('#submit-button').prop('disabled', false);
+                }
+            });
+
+        });
+    </script>
+}

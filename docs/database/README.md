@@ -16,6 +16,7 @@ Lệnh cuối tạo `XmodeFashion` nếu chưa có và áp dụng schema thời 
 ```powershell
 $env:XMODE_ADMIN_USER = 'Admin123'
 $env:XMODE_ADMIN_EMAIL = 'test123@truongshop.id.vn'
+pass: truong2004
 dotnet run --project tools/fashion-init/FashionInit.csproj --no-restore
 ```
 

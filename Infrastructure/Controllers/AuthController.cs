@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Infrastructure.Data.Fashion;
 using Infrastructure.Fashion;
 using Infrastructure.Models;
@@ -7,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Infrastructure.Controllers;
 

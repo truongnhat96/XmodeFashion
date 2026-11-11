@@ -1,5 +1,7 @@
 const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const base = process.env.XMODE_TEST_BASE;
 if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(base || '')) throw new Error('Test host must be loopback.');
 
@@ -16,6 +18,17 @@ if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(base || '')) throw new Error('Test host 
         assert.equal(await guest.evaluate(() => localStorage.getItem('xmode.mock.v1')), null);
         assert.equal(await guest.evaluate(async () => (await fetch('/api/xmode/admin/categories')).status), 401);
         pass('empty storefront and admin access control');
+
+        await guest.locator('#xm-chat-launch').click();
+        await guest.locator('#xm-chat-input').fill('Tôi muốn tìm áo thun');
+        await guest.locator('#xm-chat-send').click();
+        await guest.getByText('Cửa hàng hiện chưa có sản phẩm công khai.',{exact:false}).waitFor();
+        await guest.reload(); await guest.locator('#xm-chat-launch').click();
+        await guest.getByText('Cửa hàng hiện chưa có sản phẩm công khai.',{exact:false}).waitFor();
+        await guest.locator('#xm-chat-reset').click();
+        await guest.getByText('Chào bạn, mình là trợ lý AI của Xmode.',{exact:false}).waitFor();
+        await guest.keyboard.press('Escape'); assert.equal(await guest.locator('#xm-chat-launch').getAttribute('aria-expanded'),'false');
+        pass('chat session history, empty catalog and keyboard close');
 
         await go(admin, '/Login'); await admin.locator('[name=Username]').fill('e2e_admin'); await admin.locator('[name=Password]').fill('E2e-Only-Password-127');
         await Promise.all([admin.waitForURL(base+'/'), admin.locator('form').first().getByRole('button',{name:'Đăng Nhập'}).click()]);
@@ -82,6 +95,39 @@ if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(base || '')) throw new Error('Test host 
         await admin.locator('#xm-product-form [name=isNew]').uncheck();
         await admin.locator('#xm-product-form button.xm-wide').click(); await admin.getByRole('cell',{name:/Áo cà phê mới/}).waitFor();
         pass('product and variant create, edit and persistence');
+
+        await go(guest,productHref); await guest.locator('#xm-chat-launch').click();
+        await guest.locator('#xm-chat-input').fill('Gợi ý cho tôi áo cotton');
+        await guest.locator('#xm-chat-send').click();
+        await guest.locator('#xm-chat-error').waitFor();
+        assert.equal(await guest.locator('#xm-chat-input').inputValue(),'Gợi ý cho tôi áo cotton');
+        assert.equal(await guest.locator('#xm-chat-send').isDisabled(),false);
+        await guest.locator('#xm-chat-close').click();
+        pass('chat missing-key error preserves question for retry');
+
+        const productId=Number(productHref.split('/').pop());
+        await guest.route('**/api/xmode/chat',async route=>{
+            if(route.request().method()==='GET') return route.fulfill({json:{available:true,turns:[]}});
+            if(route.request().method()==='DELETE') return route.fulfill({status:204});
+            const body=route.request().postDataJSON(); assert.equal(body.productId,productId);
+            return route.fulfill({json:{message:body.message==='Tư vấn áo này'?'Gợi ý áo cotton. <img src=x onerror=alert(1)>':'Áo cotton này phù hợp đi học hoặc dạo phố. Bạn thích phối cùng quần jeans hay sơ mi khoác ngoài?',products:[{id:productId,name:'Áo cà phê mới',price:200000,oldPrice:null,imageUrl:null,url:productHref,variants:[{color:'Đen',size:'M',stock:3}]}]}});
+        });
+        await go(guest,productHref); await guest.locator('#xm-chat-launch').click();
+        await guest.locator('#xm-chat-input').fill('Tư vấn áo này'); await guest.locator('#xm-chat-input').press('Enter');
+        await guest.locator('.xm-chat-product').waitFor();
+        assert.equal(await guest.locator('.xm-chat-product a').getAttribute('href'),productHref);
+        assert.equal(await guest.locator('.xm-chat-turn p img').count(),0);
+        assert(await guest.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+        await guest.locator('#xm-chat-reset').click();await guest.getByText('Chào bạn, mình là trợ lý AI của Xmode.',{exact:false}).waitFor();
+        await guest.locator('#xm-chat-input').fill('Gợi ý phối đồ');await guest.locator('#xm-chat-send').click();
+        await guest.locator('.xm-chat-product').waitFor();await guest.waitForTimeout(350);
+        const screenshots=path.join(__dirname,'../../docs/xmode/screenshots');fs.mkdirSync(screenshots,{recursive:true});
+        await guest.screenshot({path:path.join(screenshots,'shopping-chat-mobile.png'),fullPage:true});
+        await guest.setViewportSize({width:1440,height:1000});
+        await guest.screenshot({path:path.join(screenshots,'shopping-chat-desktop.png'),fullPage:true});
+        await guest.setViewportSize({width:375,height:850});await guest.locator('#xm-chat-close').click();
+        await guest.unroute('**/api/xmode/chat');
+        pass('chat UI contract, product cards, XSS safety and responsive screenshots (stubbed reply)');
 
         await go(guest,'/'); await guest.getByText('Bộ sưu tập mới').first().waitFor(); await guest.getByText('Áo cà phê mới').first().waitFor();
         await go(guest,'/xmode/catalog?q=ao%20ca%20phe&size=M&color=%C4%90en'); await guest.getByText('Áo cà phê mới').first().waitFor();

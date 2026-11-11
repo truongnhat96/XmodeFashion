@@ -1,0 +1,27 @@
+<div class="xm-chat" id="xm-shopping-chat">
+    <button type="button" class="xm-chat-launch" id="xm-chat-launch" aria-controls="xm-chat-panel" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-3 2V11.5A8.5 8.5 0 0 1 9.5 3h3a8.5 8.5 0 0 1 8.5 8.5Z"/><path d="M7 9h9M7 13h6"/></svg>
+        <span>Tư vấn phối đồ</span>
+    </button>
+    <section id="xm-chat-panel" class="xm-chat-panel" role="dialog" aria-modal="false" aria-labelledby="xm-chat-title" hidden>
+        <header class="xm-chat-header">
+            <div class="xm-chat-monogram" aria-hidden="true">X</div>
+            <div><p class="xm-chat-kicker">XMODE / STYLE DESK</p><h2 id="xm-chat-title">Chọn đồ, đúng gu.</h2><p id="xm-chat-status">Trợ lý mua sắm AI</p></div>
+            <button type="button" id="xm-chat-close" class="xm-chat-icon" aria-label="Đóng tư vấn">×</button>
+        </header>
+        <div class="xm-chat-toolbar"><span>Phong cách của bạn, gợi ý từ Xmode</span><button type="button" id="xm-chat-reset">Bắt đầu lại</button></div>
+        <div id="xm-chat-messages" class="xm-chat-messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="Nội dung trò chuyện"></div>
+        <div id="xm-chat-suggestions" class="xm-chat-suggestions" aria-label="Gợi ý câu hỏi">
+            <button type="button" data-chat-question="Gợi ý áo thun dưới 300.000 đồng">Áo thun dưới 300k</button>
+            <button type="button" data-chat-question="Tôi cần đồ công sở thoáng mát, dễ phối">Đồ công sở dễ phối</button>
+            <button type="button" data-chat-question="Tôi nên chọn size như thế nào?">Hướng dẫn chọn size</button>
+        </div>
+        <p id="xm-chat-error" class="xm-chat-error" role="alert" hidden></p>
+        <form id="xm-chat-form" class="xm-chat-form">
+            <label for="xm-chat-input" class="visually-hidden">Nhập nhu cầu tư vấn trang phục</label>
+            <textarea id="xm-chat-input" name="message" maxlength="1200" rows="2" required placeholder="Bạn muốn tìm trang phục cho dịp nào?"></textarea>
+            <button type="submit" id="xm-chat-send" aria-label="Gửi câu hỏi">↗</button>
+        </form>
+        <p class="xm-chat-footnote">AI hỗ trợ lựa chọn. Kiểm tra giá, màu và size tại trang sản phẩm.</p>
+    </section>
+</div>

@@ -43,6 +43,8 @@ try
     start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
     start.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{port}";
     start.Environment["Logging__LogLevel__Default"] = "Warning";
+    // Browser contract checks never consume a real Groq key or make billable LLM calls.
+    start.Environment["Groq__ApiKey"] = " ";
     start.Environment["ConnectionStrings__FashionConnection"] = test.ConnectionString;
     host = Process.Start(start) ?? throw new Exception("Could not start web application.");
     host.OutputDataReceived += (_, e) => { if (e.Data != null) output.Enqueue(e.Data); };

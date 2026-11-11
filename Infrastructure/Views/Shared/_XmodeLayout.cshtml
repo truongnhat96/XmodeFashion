@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="~/lib/summernote/summernote-bs5.min.css" />
     <link rel="stylesheet" href="~/Infrastructure.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/xmode.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shopping-chat.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="xm @(admin ? "xm-admin" : "")">
@@ -38,7 +39,9 @@
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/lib/summernote/summernote-bs5.min.js"></script>
 <div id="xm-antiforgery" hidden>@Html.AntiForgeryToken()</div>
+@if (!admin) { <partial name="_ShoppingChat" /> }
 <script src="~/js/xmode.js" asp-append-version="true"></script>
+<script src="~/js/shopping-chat.js" asp-append-version="true"></script>
 @if (ViewContext.View.Path.Contains("/Product/") || ViewContext.View.Path.Contains("/Cart/") || ViewContext.View.Path.Contains("/Payment/"))
 {
     <script src="~/js/site.js" asp-append-version="true"></script>

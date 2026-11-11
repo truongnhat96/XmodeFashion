@@ -9,7 +9,7 @@ internal static class CloudinaryEnvironment
         var path = candidates.FirstOrDefault(File.Exists);
         if (path is null) return;
         var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        { "CloudinarySettings__CloudName", "CloudinarySettings__ApiKey", "CloudinarySettings__ApiSecret" };
+        { "CloudinarySettings__CloudName", "CloudinarySettings__ApiKey", "CloudinarySettings__ApiSecret", "Groq__ApiKey", "Groq__Model" };
         var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var raw in File.ReadLines(path))
         {

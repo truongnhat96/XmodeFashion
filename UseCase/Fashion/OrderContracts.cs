@@ -8,8 +8,8 @@ public sealed record CartLineView(Guid Id, int VariantId, int ProductId, string 
 public sealed record CartView(IReadOnlyList<CartLineView> Items, decimal Subtotal, decimal? ShippingFee);
 public sealed record OrderLineQuote(int VariantId, int Quantity, decimal UnitPrice);
 public sealed record PlaceOrderInput(Guid RequestId, string RecipientName, string Email, string Phone, string Address,
-    string City, string? Note, decimal ShippingFee, IReadOnlyList<OrderLineQuote> Lines);
-public sealed record OrderView(Guid Id, string Code, string Status, decimal ShippingFee, decimal Total, DateTime CreatedAt);
+    string City, string? Note, decimal ShippingFee, IReadOnlyList<OrderLineQuote> Lines, string PaymentMethod = "COD");
+public sealed record OrderView(Guid Id, string Code, string Status, decimal ShippingFee, decimal Total, DateTime CreatedAt, string PaymentMethod = "COD", string PaymentStatus = "Unpaid", DateTime? PaymentExpiresAt = null);
 
 public interface IFashionOrders
 {

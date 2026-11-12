@@ -14,4 +14,19 @@
 .xm .xm-table-product label{min-width:90px}
 .xm .xm-actions form{margin:0}
 @media(max-width:800px){.xm .xm-filters{display:block}.xm .xm-filters #xm-filter-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.xm .xm-filters #xm-filter-fields label{max-width:none;min-width:0}.xm .xm-actions{flex-wrap:wrap;justify-content:flex-end}.xm .xm-actions form{display:inline}}
-@media(min-width:1000px){.xm-admin .xm-admin-nav{position:fixed;left:0;top:118px;bottom:0;width:190px;padding:30px 22px;flex-direction:column;align-items:start;justify-content:start;gap:24px;z-index:6;border-right:1px solid var(--xm-line)}.xm-admin .xm-admin-nav strong{margin:0 0 20px;font-size:11px}.xm-admin main,.xm-admin .xm-footer{margin-left:190px}.xm-admin .xm-section{padding-inline:35px}}
+@media(min-width:1000px){.xm-admin .xm-admin-nav{position:fixed;left:0;top:var(--xm-admin-header-height,118px);bottom:0;width:190px;padding:30px 22px;flex-direction:column;align-items:start;justify-content:start;gap:24px;z-index:6;border-right:1px solid var(--xm-line)}.xm-admin .xm-admin-nav strong{margin:0 0 20px;font-size:11px}.xm-admin main,.xm-admin .xm-footer{margin-left:190px}.xm-admin .xm-section{padding-inline:35px}}
+
+/* Admin chrome remains anchored to the viewport; the menu scrolls independently. */
+@media(min-width:1000px){
+ .xm-admin{padding-top:var(--xm-admin-header-height,118px)}
+ .xm-admin .xm-topbar{position:fixed;inset:0 0 auto;z-index:20;background:var(--xm-paper)}
+ .xm-admin .xm-admin-nav{overflow-y:auto;overscroll-behavior:contain;flex-wrap:nowrap;border-bottom:0}
+ .xm-admin .xm-admin-nav a{flex-shrink:0}
+ .xm-admin .xm-notice{top:var(--xm-admin-header-height,118px);margin-left:190px;z-index:15}
+}
+.xm-payment-options{display:grid;gap:10px}
+.xm .xm-payment-option{display:flex;align-items:flex-start;gap:12px;padding:16px;border:1px solid var(--xm-line);margin:0;font-size:14px}
+.xm-payment-option input{margin-top:5px;flex-shrink:0}.xm-payment-option small{display:block;color:var(--xm-muted);font-size:12px}
+.xm-payment-option:has(input:checked){border-color:var(--xm-ink);background:var(--xm-warm)}
+.xm-payment-option:has(input:disabled){color:var(--xm-muted)}
+.xm-payment-state{border:1px solid var(--xm-line);background:var(--xm-warm);padding:18px;margin:20px 0}

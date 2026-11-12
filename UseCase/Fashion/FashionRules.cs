@@ -5,6 +5,8 @@ namespace UseCase.Fashion;
 
 public static class FashionRules
 {
+    // One standard nationwide delivery fee per order, independent of item quantity.
+    public const decimal DefaultShippingFee = 30000m;
     public static void ValidateProduct(ProductInput x)
     {
         if (string.IsNullOrWhiteSpace(x.Code) || x.Code.Length > 50 || string.IsNullOrWhiteSpace(x.Name) || x.Name.Length > 120 || string.IsNullOrWhiteSpace(x.Description))
@@ -32,6 +34,7 @@ public static class FashionRules
 
     public static void ValidateOrder(PlaceOrderInput input)
     {
+        if (input.PaymentMethod is not ("COD" or "VNPay" or "MoMo")) throw new CatalogValidationException("Phương thức thanh toán không hợp lệ.");
         if (input.RequestId == Guid.Empty || string.IsNullOrWhiteSpace(input.RecipientName) || input.RecipientName.Length > 100 ||
             string.IsNullOrWhiteSpace(input.Email) || input.Email.Length > 100 || !new EmailAddressAttribute().IsValid(input.Email) ||
             string.IsNullOrWhiteSpace(input.Phone) || input.Phone.Length > 25 || string.IsNullOrWhiteSpace(input.Address) || input.Address.Length > 300 ||

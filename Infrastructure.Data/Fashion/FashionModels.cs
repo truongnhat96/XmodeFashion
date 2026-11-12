@@ -158,6 +158,10 @@ public class FashionOrder
     public decimal ShippingFee { get; set; }
     public decimal Total { get; set; }
     [MaxLength(30)] public required string Status { get; set; }
+    [MaxLength(10)] public string PaymentMethod { get; set; } = "COD";
+    [MaxLength(20)] public string PaymentStatus { get; set; } = "Unpaid";
+    public DateTime? PaymentExpiresAt { get; set; }
+    public DateTime? PaidAt { get; set; }
     public bool IsArchived { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     [Timestamp] public byte[] Version { get; set; } = [];
@@ -213,4 +217,19 @@ public class StoreSettings
     [MaxLength(100)] public string? Email { get; set; }
     [MaxLength(25)] public string? Phone { get; set; }
     public decimal? ShippingFee { get; set; }
+}
+
+public class FashionPayment
+{
+    public Guid Id { get; set; }
+    public Guid OrderId { get; set; }
+    public FashionOrder Order { get; set; } = null!;
+    [MaxLength(10)] public required string Provider { get; set; }
+    public decimal Amount { get; set; }
+    [MaxLength(20)] public string Status { get; set; } = "Pending";
+    [MaxLength(2000)] public string? Url { get; set; }
+    [MaxLength(100)] public string? TransactionId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; }
+    [Timestamp] public byte[] Version { get; set; } = [];
 }

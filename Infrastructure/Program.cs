@@ -1,6 +1,7 @@
 using Infrastructure.Data.Fashion;
 using Infrastructure.Fashion;
 using Infrastructure.Fashion.Chat;
+using Infrastructure.Fashion.Payments;
 using Infrastructure.Models.Cloudinary;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +21,7 @@ public class Program
         if (string.IsNullOrWhiteSpace(connection))
             throw new InvalidOperationException("Configure ConnectionStrings:FashionConnection for the new fashion database.");
 
-        builder.Services.AddControllersWithViews();
+        builder.Services.AddControllersWithViews().AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter()));
         builder.Services.AddDistributedMemoryCache();
         builder.Services.AddSession(o => { o.Cookie.HttpOnly = true; o.Cookie.IsEssential = true; o.IdleTimeout = TimeSpan.FromHours(10); });
         builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
@@ -36,6 +37,11 @@ public class Program
         builder.Services.AddDbContext<FashionContext>(o => o.UseSqlServer(connection, sql => sql.EnableRetryOnFailure()));
         builder.Services.AddScoped<IFashionCatalog, FashionCatalog>();
         builder.Services.AddScoped<IFashionOrders, FashionOrders>();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddHttpClient<FashionPaymentGateway>(client => client.Timeout = TimeSpan.FromSeconds(10));
+        builder.Services.AddScoped<IFashionPaymentGateway>(sp => sp.GetRequiredService<FashionPaymentGateway>());
+        builder.Services.AddScoped<IFashionPayments, FashionPayments>();
+        builder.Services.AddHostedService<PaymentExpirationWorker>();
         builder.Services.AddScoped<FashionVisitor>();
         builder.Services.AddScoped<FashionErrors>();
         builder.Services.Configure<GroqOptions>(builder.Configuration.GetSection("Groq"));

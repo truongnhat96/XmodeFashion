@@ -97,14 +97,21 @@ public sealed class FashionAdminApiController(IFashionCatalog catalog, FashionCo
 
     public record SettingsInput(string? Name, string? Tagline, string? Email, string? Phone, decimal? ShippingFee);
     [HttpGet("store-settings")]
-    public async Task<IActionResult> Settings(CancellationToken ct) => Ok(await db.StoreSettings.AsNoTracking().SingleOrDefaultAsync(s => s.Id == 1, ct) ?? new StoreSettings { Id = 1 });
+    public async Task<IActionResult> Settings(CancellationToken ct)
+    {
+        var settings = await db.StoreSettings.AsNoTracking().SingleOrDefaultAsync(s => s.Id == 1, ct) ?? new StoreSettings { Id = 1 };
+        settings.ShippingFee ??= FashionRules.DefaultShippingFee;
+        return Ok(settings);
+    }
     [HttpPut("store-settings")]
     public async Task<IActionResult> Settings(SettingsInput x, CancellationToken ct)
     {
+        if (x.ShippingFee is decimal fee && (fee < 0 || fee > 1000000 || fee != decimal.Truncate(fee)))
+            throw new CatalogValidationException("Phí giao hàng phải là số nguyên từ 0 đến 1.000.000 VND.");
         if (x.Name?.Length > 100 || x.Tagline?.Length > 250 || x.Email?.Length > 100 || x.Phone?.Length > 25 || x.ShippingFee < 0) throw new CatalogValidationException("Thiết lập không hợp lệ.");
         var settings = await db.StoreSettings.FindAsync([1], ct);
         if (settings is null) { settings = new StoreSettings { Id = 1 }; db.StoreSettings.Add(settings); }
-        settings.Name = x.Name; settings.Tagline = x.Tagline; settings.Email = x.Email; settings.Phone = x.Phone; settings.ShippingFee = x.ShippingFee;
+        settings.Name = x.Name; settings.Tagline = x.Tagline; settings.Email = x.Email; settings.Phone = x.Phone; settings.ShippingFee = x.ShippingFee ?? FashionRules.DefaultShippingFee;
         await db.SaveChangesAsync(ct); return Ok(settings);
     }
 
@@ -118,7 +125,7 @@ public sealed class FashionAdminApiController(IFashionCatalog catalog, FashionCo
         var total = await query.CountAsync(ct);
         page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling((double)total / pageSize)));
         var items = await query.OrderByDescending(o => o.CreatedAt).ThenBy(o => o.Id).Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(o => new { o.Id, o.Code, o.RecipientName, o.Phone, o.Status, o.Total, o.CreatedAt, o.IsArchived, o.Version }).ToListAsync(ct);
+            .Select(o => new { o.Id, o.Code, o.RecipientName, o.Phone, o.Status, o.Total, o.CreatedAt, o.PaymentMethod, o.PaymentStatus, o.IsArchived, o.Version }).ToListAsync(ct);
         return Ok(new { items, total, page, pageSize });
     }
     [HttpGet("orders/{id:guid}")]
@@ -150,11 +157,15 @@ public sealed class FashionAdminApiController(IFashionCatalog catalog, FashionCo
             await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
             var order = await db.Orders.Include(o => o.Items).ThenInclude(i => i.Variant).Include(o => o.History).AsSplitQuery().SingleOrDefaultAsync(o => o.Id == id, ct) ?? throw new CatalogNotFoundException("Đơn hàng không tồn tại.");
             if (!order.Version.SequenceEqual(input.Version)) throw new DbUpdateConcurrencyException();
+            if (input.Status is "Confirmed" or "Shipping" or "Completed" && order.PaymentMethod != "COD" && order.PaymentStatus != "Paid")
+                throw new CatalogValidationException("Đơn thanh toán online chưa nhận được xác nhận thanh toán hợp lệ.");
             var allowed = FashionRules.CanTransition(order.Status, input.Status, input.GoodsReturned);
             if (!allowed) throw new CatalogValidationException("Không thể chuyển trạng thái này; khi hủy đơn đang giao cần xác nhận đã nhận lại hàng.");
             if (input.Status == "Cancelled") foreach (var item in order.Items.OrderBy(i => i.VariantId)) item.Variant.Stock += item.Quantity;
             order.History.Add(new FashionOrderStatusHistory { PreviousStatus = order.Status, Status = input.Status, ActorUserId = ActorId(), Reason = input.Reason });
             order.Status = input.Status;
+            if (input.Status == "Cancelled" && order.PaymentMethod != "COD") order.PaymentStatus = order.PaymentStatus == "Paid" ? "RefundRequired" : "Cancelled";
+            if (input.Status == "Completed" && order.PaymentMethod == "COD") { order.PaymentStatus = "Paid"; order.PaidAt = DateTime.UtcNow; }
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         });
         return NoContent();
@@ -163,6 +174,7 @@ public sealed class FashionAdminApiController(IFashionCatalog catalog, FashionCo
     public async Task<IActionResult> Archive(Guid id, DeleteProductInput input, CancellationToken ct)
     {
         var order = await db.Orders.FindAsync([id], ct) ?? throw new CatalogNotFoundException("Đơn hàng không tồn tại.");
+        if (order.PaymentStatus == "RefundRequired") throw new CatalogValidationException("Cần hoàn tiền và ghi nhận mã tham chiếu trước khi lưu trữ đơn.");
         if (order.Status is not ("Completed" or "Cancelled")) throw new CatalogValidationException("Chỉ lưu trữ đơn đã hoàn tất hoặc đã hủy.");
         db.Entry(order).Property(o => o.Version).OriginalValue = input.Version; order.IsArchived = true;
         await db.SaveChangesAsync(ct); return NoContent();

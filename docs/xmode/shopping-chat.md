@@ -20,7 +20,7 @@ Adapter gửi Chat Completions đến `https://api.groq.com/openai/v1/chat/compl
 - Backend chỉ truy vấn sản phẩm/danh mục công khai, giá, biến thể còn hoạt động, bảng size và thiết lập liên hệ/phí vận chuyển. Không truy vấn tài khoản hoặc đơn hàng để gửi cho Groq.
 - Mỗi lượt sử dụng tối đa 20 sản phẩm phù hợp hoặc mới nhất; kèm sản phẩm đang xem nếu có. Phần hội thoại chuyển cho model giới hạn 8 tin gần nhất.
 - Câu trả lời là văn bản thuần và tối đa 4 ID sản phẩm từ catalog được cấp. ID không có trong catalog bị từ chối. Giá, tồn và liên kết của thẻ được backend đọc lại sau khi model trả lời, không lấy từ nội dung model.
-- Hỏi size khi chưa đủ số đo thì trợ lý cần hỏi thêm; không tự hứa phí ship, khuyến mại, đổi trả hoặc giao hàng chưa có dữ liệu. Luồng thanh toán hiện có là COD.
+- Hỏi size khi chưa đủ số đo thì trợ lý cần hỏi thêm; không tự hứa phí ship, khuyến mại, đổi trả hoặc giao hàng chưa có dữ liệu. Khách chọn COD hoặc VNPay/MoMo đang khả dụng ở checkout; xem [cấu hình thanh toán](payments.md).
 - Chatbot chỉ tư vấn và dẫn đến trang sản phẩm. Không tự thay đổi giỏ, đặt/hủy đơn hoặc thanh toán.
 - Lịch sử nằm trong session server, tối đa 12 tin. Nút “Bắt đầu lại” xóa lịch sử chat của phiên; không dùng localStorage cho nội dung chat.
 - POST/DELETE kiểm tra antiforgery; giới hạn 12 yêu cầu/phút theo tài khoản hoặc IP. Chỉ xử lý một yêu cầu/phiên và tối đa 4 lượt đồng thời toàn ứng dụng.

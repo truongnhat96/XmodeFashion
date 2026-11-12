@@ -45,6 +45,17 @@ try
     start.Environment["Logging__LogLevel__Default"] = "Warning";
     // Browser contract checks never consume a real Groq key or make billable LLM calls.
     start.Environment["Groq__ApiKey"] = " ";
+    // Fixture-only VNPay signing; no real merchant keys and no network checkout.
+    start.Environment["Vnpay__Enabled"] = "true";
+    start.Environment["Vnpay__TmnCode"] = "E2ECODE";
+    start.Environment["Vnpay__HashSecret"] = "e2e-vnpay-secret";
+    start.Environment["Vnpay__BaseUrl"] = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    start.Environment["Payments__PublicBaseUrl"] = "https://checkout.example.invalid";
+    start.Environment["MomoAPI__Enabled"] = "true";
+    start.Environment["MomoAPI__PartnerCode"] = "E2EMOMO";
+    start.Environment["MomoAPI__AccessKey"] = "e2e-access";
+    start.Environment["MomoAPI__SecretKey"] = "e2e-momo-secret";
+    start.Environment["MomoAPI__Endpoint"] = "https://test-payment.momo.vn/v2/gateway/api/create";
     start.Environment["ConnectionStrings__FashionConnection"] = test.ConnectionString;
     host = Process.Start(start) ?? throw new Exception("Could not start web application.");
     host.OutputDataReceived += (_, e) => { if (e.Data != null) output.Enqueue(e.Data); };

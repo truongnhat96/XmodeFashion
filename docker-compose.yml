@@ -16,6 +16,14 @@ services:
       CloudinarySettings__ApiSecret: "${CloudinarySettings__ApiSecret}"
       Groq__ApiKey: "${Groq__ApiKey:-}"
       Groq__Model: "${Groq__Model:-openai/gpt-oss-120b}"
+      Payments__PublicBaseUrl: "${Payments__PublicBaseUrl:-}"
+      Vnpay__TmnCode: "${Vnpay__TmnCode:-}"
+      Vnpay__HashSecret: "${Vnpay__HashSecret:-}"
+      Vnpay__BaseUrl: "${Vnpay__BaseUrl:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}"
+      MomoAPI__PartnerCode: "${MomoAPI__PartnerCode:-}"
+      MomoAPI__AccessKey: "${MomoAPI__AccessKey:-}"
+      MomoAPI__SecretKey: "${MomoAPI__SecretKey:-}"
+      MomoAPI__Endpoint: "${MomoAPI__Endpoint:-https://test-payment.momo.vn/v2/gateway/api/create}"
       TZ: "Asia/Ho_Chi_Minh"
 
     volumes:

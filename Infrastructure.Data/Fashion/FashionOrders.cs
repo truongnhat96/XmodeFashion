@@ -16,7 +16,7 @@ public sealed class FashionOrders(FashionContext db) : IFashionOrders
             i.Variant.Color, i.Variant.Size, i.Variant.Product.Price, i.Quantity, i.Variant.Stock,
             i.Variant.IsActive && i.Variant.Product.IsVisible && !i.Variant.Product.IsDeleted && i.Variant.Product.Category.IsVisible)).ToList() ?? [];
         var fee = await db.StoreSettings.AsNoTracking().Where(s => s.Id == 1).Select(s => s.ShippingFee).SingleOrDefaultAsync(ct);
-        return new(items, items.Sum(i => i.Price * i.Quantity), fee);
+        return new(items, items.Sum(i => i.Price * i.Quantity), fee ?? FashionRules.DefaultShippingFee);
     }
 
     public async Task SetCartItemAsync(CartOwner owner, int variantId, int quantity, CancellationToken ct = default)
@@ -70,13 +70,13 @@ public sealed class FashionOrders(FashionContext db) : IFashionOrders
                 return View(previous);
             }
             var fee = await db.StoreSettings.Where(s => s.Id == 1).Select(s => s.ShippingFee).SingleOrDefaultAsync(ct);
-            if (fee is null) throw new CatalogValidationException("Cửa hàng chưa cấu hình phí vận chuyển.");
+            fee ??= FashionRules.DefaultShippingFee;
             var cart = await CartQuery(owner).Include(c => c.Items).ThenInclude(i => i.Variant).ThenInclude(v => v.Product)
                 .ThenInclude(p => p.Category).AsSplitQuery().SingleOrDefaultAsync(ct);
             if (cart is null || cart.Items.Count == 0) throw new CatalogValidationException("Giỏ hàng đang trống.");
             if (fee != input.ShippingFee || input.Lines.Count != cart.Items.Count || cart.Items.Any(i =>
                 !input.Lines.Any(q => q.VariantId == i.VariantId && q.Quantity == i.Quantity && q.UnitPrice == i.Variant.Product.Price)))
-                throw new CatalogValidationException("Giá hoặc giỏ hàng đã thay đổi; vui lòng kiểm tra lại.");
+                throw new CatalogValidationException("Giá, phí vận chuyển hoặc giỏ hàng đã thay đổi; vui lòng tải lại trang để xác nhận tổng tiền mới.");
             foreach (var item in cart.Items)
                 if (!item.Variant.IsActive || !item.Variant.Product.IsVisible || item.Variant.Product.IsDeleted || !item.Variant.Product.Category.IsVisible || item.Quantity > item.Variant.Stock)
                     throw new CatalogValidationException("Sản phẩm không còn đủ hàng; vui lòng kiểm tra lại giỏ.");
@@ -85,8 +85,12 @@ public sealed class FashionOrders(FashionContext db) : IFashionOrders
                 Id = Guid.NewGuid(), Code = $"XM-{Guid.NewGuid():N}", RequestId = input.RequestId, UserId = owner.UserId,
                 GuestKeyHash = owner.GuestKeyHash, RecipientName = input.RecipientName.Trim(), Email = input.Email.Trim(), Phone = input.Phone.Trim(),
                 Address = input.Address.Trim(), City = input.City.Trim(), Note = input.Note?.Trim(), ShippingFee = fee.Value,
+                PaymentMethod = input.PaymentMethod, PaymentStatus = input.PaymentMethod == "COD" ? "Unpaid" : "Pending",
+                PaymentExpiresAt = input.PaymentMethod == "COD" ? null : DateTime.UtcNow.AddMinutes(15),
                 Total = cart.Items.Sum(i => i.Variant.Product.Price * i.Quantity) + fee.Value, Status = "Pending"
             };
+            if (input.PaymentMethod != "COD" && (order.Total != decimal.Truncate(order.Total) || order.Total < 5000 || order.Total > 50000000))
+                throw new CatalogValidationException("Thanh toán online hỗ trợ tổng tiền nguyên từ 5.000 đến 50.000.000 VND. Vui lòng chọn COD.");
             foreach (var item in cart.Items.OrderBy(i => i.VariantId))
             {
                 var variant = item.Variant;
@@ -96,6 +100,8 @@ public sealed class FashionOrders(FashionContext db) : IFashionOrders
             }
             order.History.Add(new FashionOrderStatusHistory { Status = order.Status, ActorUserId = owner.UserId });
             db.Orders.Add(order);
+            if (order.PaymentMethod != "COD") db.Payments.Add(new FashionPayment { Id = order.Id, Order = order, OrderId = order.Id,
+                Provider = order.PaymentMethod, Amount = order.Total, ExpiresAt = order.PaymentExpiresAt!.Value });
             db.CartItems.RemoveRange(cart.Items);
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
@@ -118,6 +124,7 @@ public sealed class FashionOrders(FashionContext db) : IFashionOrders
             foreach (var item in order.Items.OrderBy(i => i.VariantId)) item.Variant.Stock += item.Quantity;
             order.History.Add(new FashionOrderStatusHistory { PreviousStatus = order.Status, Status = "Cancelled", ActorUserId = owner.UserId });
             order.Status = "Cancelled";
+            if (order.PaymentMethod != "COD") order.PaymentStatus = order.PaymentStatus == "Paid" ? "RefundRequired" : "Cancelled";
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
             return View(order);
@@ -128,5 +135,5 @@ public sealed class FashionOrders(FashionContext db) : IFashionOrders
         ? db.Carts.Where(c => c.UserId == userId) : db.Carts.Where(c => c.GuestKeyHash == owner.GuestKeyHash);
     private static bool IsOwner(FashionOrder order, CartOwner owner) => owner.UserId is int userId
         ? order.UserId == userId : order.UserId is null && order.GuestKeyHash == owner.GuestKeyHash;
-    private static OrderView View(FashionOrder o) => new(o.Id, o.Code, o.Status, o.ShippingFee, o.Total, o.CreatedAt);
+    private static OrderView View(FashionOrder o) => new(o.Id, o.Code, o.Status, o.ShippingFee, o.Total, o.CreatedAt, o.PaymentMethod, o.PaymentStatus, o.PaymentExpiresAt);
 }

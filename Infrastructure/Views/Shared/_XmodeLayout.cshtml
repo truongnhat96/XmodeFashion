@@ -17,6 +17,7 @@
 </head>
 <body class="xm @(admin ? "xm-admin" : "")">
 <a class="xm-skip" href="#main">Đến nội dung</a>
+<div class="xm-topbar">
 <div class="xm-announcement">XMODE / EVERYDAY ESSENTIALS</div>
 <header class="xm-header">
     <button class="xm-menu-button" type="button" data-menu aria-label="Mở menu" aria-expanded="false">☰</button>
@@ -28,6 +29,7 @@
     @if (User.Identity?.IsAuthenticated == true) { <a href="/xmode/orders">Đơn hàng</a><form action="/Logout" method="post">@Html.AntiForgeryToken()<button class="xm-text-button" type="submit">Đăng xuất</button></form> } else { <a href="/Login">Tài khoản</a> }
     <a href="/xmode/cart">Giỏ <span data-cart-count>0</span></a></div>
 </header>
+</div>
 @if (admin || User.IsInRole("Admin")) {
     <nav class="xm-admin-nav" aria-label="Quản trị"><strong>XMODE STUDIO</strong><a href="/xmode/admin/products">Sản phẩm</a><a href="/xmode/admin/categories">Danh mục</a><a href="/xmode/admin/orders">Đơn hàng</a><a href="/xmode/admin/content">Trang chủ</a><a href="/xmode/admin/size-charts">Bảng size</a><a href="/xmode/admin/settings">Thiết lập</a><a href="/BlogList">Bài viết</a><a href="/">Xem cửa hàng ↗</a></nav>
 }

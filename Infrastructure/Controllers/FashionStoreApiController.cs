@@ -8,7 +8,7 @@ using UseCase.Fashion;
 namespace Infrastructure.Controllers;
 
 [ApiController, Route("api/xmode"), AutoValidateAntiforgeryToken, ServiceFilter(typeof(FashionErrors))]
-public sealed class FashionStoreApiController(IFashionCatalog catalog, IFashionOrders orders, FashionContext db, FashionVisitor visitor) : ControllerBase
+public sealed class FashionStoreApiController(IFashionCatalog catalog, IFashionOrders orders, FashionContext db, FashionVisitor visitor, IFashionPaymentGateway gateway) : ControllerBase
 {
     [HttpGet("categories")]
     public Task<IReadOnlyList<CategoryView>> Categories(CancellationToken ct) => catalog.CategoriesAsync(false, ct);
@@ -49,7 +49,12 @@ public sealed class FashionStoreApiController(IFashionCatalog catalog, IFashionO
     [HttpGet("size-charts/{id:int}")]
     public async Task<IActionResult> SizeChart(int id, CancellationToken ct) => (await db.SizeCharts.AsNoTracking().Include(x => x.Rows).SingleOrDefaultAsync(x => x.Id == id, ct)) is { } chart ? Ok(chart) : NotFound();
     [HttpGet("store-settings")]
-    public async Task<IActionResult> Settings(CancellationToken ct) => Ok(await db.StoreSettings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == 1, ct) ?? new StoreSettings { Id = 1 });
+    public async Task<IActionResult> Settings(CancellationToken ct)
+    {
+        var settings = await db.StoreSettings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == 1, ct) ?? new StoreSettings { Id = 1 };
+        settings.ShippingFee ??= FashionRules.DefaultShippingFee;
+        return Ok(settings);
+    }
 
     [HttpGet("cart")]
     public Task<CartView> Cart(CancellationToken ct) => orders.GetCartAsync(visitor.Owner(HttpContext), ct);
@@ -79,7 +84,12 @@ public sealed class FashionStoreApiController(IFashionCatalog catalog, IFashionO
     public async Task<IActionResult> RemoveCart(Guid id, CancellationToken ct) { await orders.RemoveCartItemAsync(visitor.Owner(HttpContext), id, ct); return NoContent(); }
 
     [HttpPost("orders")]
-    public Task<OrderView> PlaceOrder(PlaceOrderInput input, CancellationToken ct) => orders.PlaceOrderAsync(visitor.Owner(HttpContext), input, ct);
+    public Task<OrderView> PlaceOrder(PlaceOrderInput input, CancellationToken ct)
+    {
+        if (!gateway.Methods().Any(m => m.Code == input.PaymentMethod && m.Available))
+            throw new CatalogValidationException("Phương thức thanh toán chưa được cấu hình hoặc đang tạm ngưng.");
+        return orders.PlaceOrderAsync(visitor.Owner(HttpContext), input, ct);
+    }
     [HttpPost("orders/{id:guid}/cancel")]
     public async Task<OrderView> Cancel(Guid id, CancellationToken ct)
     {
@@ -94,7 +104,7 @@ public sealed class FashionStoreApiController(IFashionCatalog catalog, IFashionO
         var guest = visitor.GuestHash(HttpContext);
         var userId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : (int?)null;
         var list = await db.Orders.AsNoTracking().Where(o => (userId != null && o.UserId == userId) || (o.UserId == null && o.GuestKeyHash == guest))
-            .OrderByDescending(o => o.CreatedAt).Select(o => new { o.Id, o.Code, o.Status, o.Total, o.ShippingFee, o.CreatedAt }).ToListAsync(ct);
+            .OrderByDescending(o => o.CreatedAt).Select(o => new { o.Id, o.Code, o.Status, o.Total, o.ShippingFee, o.CreatedAt, o.PaymentMethod, o.PaymentStatus }).ToListAsync(ct);
         return Ok(list);
     }
     [HttpGet("orders/{id:guid}")]
@@ -107,6 +117,6 @@ public sealed class FashionStoreApiController(IFashionCatalog catalog, IFashionO
         return order is null ? NotFound() : Ok(OrderResponse(order));
     }
     internal static object OrderResponse(FashionOrder o) => new { o.Id, o.Code, o.Status, o.RecipientName, o.Email, o.Phone, o.Address, o.City, o.Note,
-        o.ShippingFee, o.Total, o.CreatedAt, o.IsArchived, o.Version, items = o.Items.Select(i => new { i.ProductName, i.Sku, i.Color, i.Size, i.UnitPrice, i.Quantity }),
+        o.ShippingFee, o.Total, o.CreatedAt, o.PaymentMethod, o.PaymentStatus, o.PaymentExpiresAt, o.PaidAt, o.IsArchived, o.Version, items = o.Items.Select(i => new { i.ProductName, i.Sku, i.Color, i.Size, i.UnitPrice, i.Quantity }),
         history = o.History.OrderBy(h => h.CreatedAt).Select(h => new { h.PreviousStatus, h.Status, h.Reason, h.CreatedAt }) };
 }

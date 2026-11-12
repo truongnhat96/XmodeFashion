@@ -14,6 +14,7 @@ public class FashionContext(DbContextOptions<FashionContext> options) : DbContex
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
     public DbSet<FashionCart> Carts => Set<FashionCart>();
     public DbSet<FashionCartItem> CartItems => Set<FashionCartItem>();
+    public DbSet<FashionPayment> Payments => Set<FashionPayment>();
     public DbSet<FashionOrder> Orders => Set<FashionOrder>();
     public DbSet<FashionOrderItem> OrderItems => Set<FashionOrderItem>();
     public DbSet<FashionOrderStatusHistory> OrderStatusHistories => Set<FashionOrderStatusHistory>();
@@ -50,6 +51,13 @@ public class FashionContext(DbContextOptions<FashionContext> options) : DbContex
         b.Entity<FashionCartItem>().HasIndex(x => new { x.CartId, x.VariantId }).IsUnique();
         b.Entity<FashionCartItem>().HasOne(x => x.Variant).WithMany().HasForeignKey(x => x.VariantId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<FashionCartItem>().ToTable(t => t.HasCheckConstraint("CK_CartItem_Quantity", "[Quantity] > 0"));
+        b.Entity<FashionPayment>().HasIndex(x => x.OrderId).IsUnique();
+        b.Entity<FashionPayment>().HasIndex(x => new { x.Provider, x.TransactionId }).IsUnique().HasFilter("[TransactionId] IS NOT NULL");
+        b.Entity<FashionPayment>().Property(x => x.Amount).HasPrecision(18, 2);
+        b.Entity<FashionPayment>().HasOne(x => x.Order).WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<FashionOrder>().Property(x => x.PaymentMethod).HasDefaultValue("COD");
+        b.Entity<FashionOrder>().Property(x => x.PaymentStatus).HasDefaultValue("Unpaid");
+        b.Entity<FashionOrder>().HasIndex(x => new { x.PaymentStatus, x.PaymentExpiresAt });
         b.Entity<FashionOrder>().HasIndex(x => x.Code).IsUnique();
         b.Entity<FashionOrder>().HasMany(x => x.Items).WithOne().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<FashionOrder>().HasMany(x => x.History).WithOne().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);

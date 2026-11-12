@@ -34,7 +34,7 @@ public sealed class ShoppingChatCatalog(FashionContext db) : IShoppingChatCatalo
             terms.Sum(t => Normalize(p.Name + " " + p.Category + " " + p.Material).Contains(t, StringComparison.Ordinal) ? 1 : 0))
             .ThenBy(p => p.Id).Take(20).ToList();
         var settings = await db.StoreSettings.AsNoTracking().SingleOrDefaultAsync(s => s.Id == 1, ct);
-        return new(total, ranked, settings?.ShippingFee, settings?.Email, settings?.Phone);
+        return new(total, ranked, settings?.ShippingFee ?? FashionRules.DefaultShippingFee, settings?.Email, settings?.Phone);
     }
 
     public async Task<IReadOnlyList<ShoppingProduct>> GetProductsAsync(IReadOnlyList<int> ids, CancellationToken ct)

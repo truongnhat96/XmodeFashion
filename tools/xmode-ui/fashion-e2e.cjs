@@ -149,6 +149,90 @@ if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(base || '')) throw new Error('Test host 
         await admin.locator('[data-order-view]').first().click();await admin.getByText('Đã xác nhận').last().waitFor();
         pass('guest COD checkout and order ownership');
 
+        // A real backend order and signed IPNs, with outbound browser navigation intercepted.
+        const httpJson=async(page,url,method='GET',body)=>page.evaluate(async({url,method,body})=>{
+            const response=await fetch('/api/xmode'+url,{method,headers:{'X-CSRF-TOKEN':document.querySelector('#xm-antiforgery input').value,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
+            return {status:response.status,body:response.status===204?null:await response.json()};
+        },{url,method,body});
+        const catalogNow=(await httpJson(guest,'/products')).body.items;
+        const payProduct=catalogNow.find(p=>p.variants.some(v=>v.stock>0));const variant=payProduct.variants.find(v=>v.stock>0);
+        assert.equal((await httpJson(guest,'/cart/items','POST',{variantId:variant.id,quantity:1})).status,200);
+        await go(guest,'/xmode/checkout');
+        assert.equal(await guest.locator('[name=paymentMethod][value=COD]').isChecked(),true);
+        assert.equal(await guest.locator('[name=paymentMethod][value=VNPay]').isEnabled(),true);
+        assert.equal(await guest.locator('[name=paymentMethod][value=MoMo]').isEnabled(),true);
+        await guest.locator('[name=recipientName]').fill('Khách thanh toán online');await guest.locator('[name=email]').fill('online@example.invalid');
+        await guest.locator('[name=phone]').fill('0901234567');await guest.locator('[name=address]').fill('Địa chỉ kiểm thử');await guest.locator('[name=city]').fill('Hà Nội');
+        await guest.locator('[name=paymentMethod][value=VNPay]').check();
+        let paymentUrl;
+        await guest.route('https://sandbox.vnpayment.vn/**',async route=>{paymentUrl=route.request().url();await route.fulfill({status:200,contentType:'text/html',body:'<p>VNPay fixture: no external request was sent.</p>'});});
+        await guest.locator('#xm-checkout button').click();await guest.waitForURL('https://sandbox.vnpayment.vn/**');
+        assert.ok(paymentUrl);const paymentParams=new URL(paymentUrl).searchParams;const payId=paymentParams.get('vnp_TxnRef');
+        const orderId=payId.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/,'$1-$2-$3-$4-$5');
+        await go(guest,'/xmode/orders/'+orderId);await guest.locator('[data-pay-order]').waitFor();
+        const unpaid=(await httpJson(guest,'/orders/'+orderId)).body;assert.equal(unpaid.paymentStatus,'Pending');assert.equal(unpaid.paymentMethod,'VNPay');
+        await go(admin,'/xmode/admin/orders');await admin.locator('[data-order-view="'+orderId+'"]').click();
+        assert.equal(await admin.locator('[data-order-status=Confirmed]').isDisabled(),true);await admin.locator('[data-close]').click();
+        const signVnp=extra=>{
+            const values={vnp_Amount:paymentParams.get('vnp_Amount'),vnp_TmnCode:'E2ECODE',vnp_TxnRef:payId,vnp_ResponseCode:'00',vnp_TransactionStatus:'00',vnp_TransactionNo:'998877',...extra};
+            const params=new URLSearchParams();Object.keys(values).sort().forEach(k=>params.set(k,values[k]));
+            const signature=require('node:crypto').createHmac('sha512','e2e-vnpay-secret').update(params.toString()).digest('hex');
+            params.set('vnp_SecureHash',signature);return params.toString();
+        };
+        // A valid browser return cannot mark an order paid before the server IPN.
+        await go(guest,'/api/xmode/payments/vnpay/return?'+signVnp({}));
+        assert.equal((await httpJson(guest,'/orders/'+orderId)).body.paymentStatus,'Pending');
+        const forged=await guest.request.get(base+'/api/xmode/payments/vnpay/ipn?'+signVnp({})+'&vnp_Amount=1');assert.equal((await forged.json()).RspCode,'97');
+        const wrongAmount=await guest.request.get(base+'/api/xmode/payments/vnpay/ipn?'+signVnp({vnp_Amount:'100000'}));assert.equal((await wrongAmount.json()).RspCode,'04');
+        const paid=await guest.request.get(base+'/api/xmode/payments/vnpay/ipn?'+signVnp({}));assert.equal((await paid.json()).RspCode,'00');
+        const replay=await guest.request.get(base+'/api/xmode/payments/vnpay/ipn?'+signVnp({}));assert.equal((await replay.json()).RspCode,'02');
+        await go(guest,'/xmode/orders/'+orderId);await guest.getByText('VNPay · Đã thanh toán',{exact:true}).waitFor();assert.equal(await guest.locator('[data-pay-order]').count(),0);
+        await httpJson(guest,'/orders/'+orderId+'/cancel','POST');assert.equal((await httpJson(guest,'/orders/'+orderId)).body.paymentStatus,'RefundRequired');
+        await go(admin,'/xmode/admin/orders');await admin.locator('[data-order-view="'+orderId+'"]').click();
+        admin.once('dialog',dialog=>dialog.accept('E2E-REFUND-01'));await admin.locator('[data-refund-confirm]').click();await admin.getByText('Đã ghi nhận hoàn tiền.',{exact:true}).waitFor();
+        assert.equal((await httpJson(guest,'/orders/'+orderId)).body.paymentStatus,'Refunded');
+        const refunded=(await httpJson(admin,'/admin/orders/'+orderId)).body;
+        assert.equal((await httpJson(admin,'/admin/orders/'+orderId+'/archive','POST',{version:refunded.version})).status,204);
+        pass('VNPay checkout, unpaid shipping guard, verified IPN, replay and refund tracking');
+
+        assert.equal((await httpJson(guest,'/cart/items','POST',{variantId:variant.id,quantity:1})).status,200);
+        const momoCart=(await httpJson(guest,'/cart')).body;
+        const momoOrder=(await httpJson(guest,'/orders','POST',{requestId:require('node:crypto').randomUUID(),recipientName:'Khách MoMo',email:'momo@example.invalid',phone:'0901234567',address:'Địa chỉ kiểm thử',city:'Hà Nội',note:null,paymentMethod:'MoMo',shippingFee:momoCart.shippingFee,lines:momoCart.items.map(i=>({variantId:i.variantId,quantity:i.quantity,unitPrice:i.price}))})).body;
+        assert.equal(momoOrder.paymentStatus,'Pending');
+        const momoFields={amount:momoOrder.total,extraData:'',message:'Successful.',orderId:momoOrder.id.replaceAll('-',''),orderInfo:'Thanh toan don '+momoOrder.code,orderType:'momo_wallet',partnerCode:'E2EMOMO',payType:'qr',requestId:momoOrder.id.replaceAll('-',''),responseTime:1794350000000,resultCode:0,transId:88776655};
+        const momoRaw='accessKey=e2e-access&'+Object.entries(momoFields).map(([k,v])=>k+'='+v).join('&');
+        const momoSigned={...momoFields,signature:require('node:crypto').createHmac('sha256','e2e-momo-secret').update(momoRaw).digest('hex')};
+        const momoBad=await guest.request.post(base+'/api/xmode/payments/momo/ipn',{data:{...momoSigned,amount:1}});assert.equal(momoBad.status(),400);
+        const momoGood=await guest.request.post(base+'/api/xmode/payments/momo/ipn',{data:{...momoSigned,promotionInfo:[],userFee:null}});assert.equal(momoGood.status(),204);
+        const momoReplay=await guest.request.post(base+'/api/xmode/payments/momo/ipn',{data:momoSigned});assert.equal(momoReplay.status(),204);
+        assert.equal((await httpJson(guest,'/orders/'+momoOrder.id)).body.paymentStatus,'Paid');
+        await httpJson(guest,'/orders/'+momoOrder.id+'/cancel','POST');
+        const momoRefund=(await httpJson(admin,'/admin/orders/'+momoOrder.id)).body;
+        assert.equal((await httpJson(admin,'/admin/orders/'+momoOrder.id+'/refund-confirmation','POST',{version:momoRefund.version,reference:'E2E-MOMO-REFUND'})).status,204);
+        const momoDone=(await httpJson(admin,'/admin/orders/'+momoOrder.id)).body;
+        await httpJson(admin,'/admin/orders/'+momoOrder.id+'/archive','POST',{version:momoDone.version});
+        pass('MoMo signed JSON IPN without cookie/CSRF, amount tampering and repeated notification');
+
+        await go(admin,'/xmode/admin/products');await admin.locator('tbody tr').first().waitFor();
+        const menuBefore=await admin.locator('.xm-admin-nav').boundingBox();
+        await admin.evaluate(()=>{document.querySelector('#main').style.minHeight='2400px';window.scrollTo(0,1000)});await admin.waitForTimeout(100);
+        const menuAfter=await admin.locator('.xm-admin-nav').boundingBox();const topbar=await admin.locator('.xm-topbar').boundingBox();
+        const announcement=await admin.locator('.xm-announcement').boundingBox();
+        assert.ok(Math.abs(announcement.y)<1,JSON.stringify(await admin.locator('.xm-topbar').evaluate(el=>({bar:el.getBoundingClientRect().toJSON(),announcement:el.firstElementChild.getBoundingClientRect().toJSON(),padding:getComputedStyle(el).padding,body:document.body.outerHTML.slice(0,500)}))));
+        assert.ok(Math.abs(menuBefore.y-menuAfter.y)<1);assert.ok(Math.abs(menuAfter.y-(topbar.y+topbar.height))<2);assert.ok(Math.abs(topbar.y)<1);
+        await admin.screenshot({path:path.join('docs','xmode','screenshots','admin-sidebar-scroll.png')});
+        await admin.setViewportSize({width:1440,height:480});await admin.waitForTimeout(100);
+        const independent=await admin.locator('.xm-admin-nav').evaluate(el=>{el.scrollTop=el.scrollHeight;return {scroll:el.scrollTop,height:el.clientHeight,overflow:getComputedStyle(el).overflowY}});
+        assert.equal(independent.overflow,'auto');assert.ok(independent.scroll>0);
+        await admin.setViewportSize({width:375,height:850});await admin.waitForTimeout(100);
+        assert.equal(await admin.locator('.xm-admin-nav').evaluate(el=>getComputedStyle(el).position),'static');
+        assert.ok(await admin.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+        await admin.setViewportSize({width:1440,height:900});
+        pass('Admin sidebar fixed through scroll, short viewport and mobile layout');
+
+        await go(admin,'/xmode/admin/orders');
+        await admin.locator('[data-order-view]').first().click();
+
         admin.once('dialog',d=>d.accept()); await admin.locator('[data-order-status=Shipping]').click(); await admin.locator('#xm-dialog').waitFor({state:'hidden'});
         await admin.locator('[data-order-view]').first().click();
         admin.once('dialog',d=>d.accept()); await admin.locator('[data-order-status=Completed]').click(); await admin.locator('#xm-dialog').waitFor({state:'hidden'});

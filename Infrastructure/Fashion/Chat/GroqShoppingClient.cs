@@ -34,7 +34,7 @@ public sealed class GroqShoppingClient(HttpClient http, IOptions<GroqOptions> op
             Không khẳng định số đo cơ thể phù hợp size nếu chưa có số đo hoặc bảng size tương ứng.
             Giá/tồn kho được giao diện hiển thị bằng thẻ dữ liệu thật: KHÔNG viết giá tiền hay
             số lượng tồn cụ thể trong message, không viết link. Nhắc khách xem giá/màu/size ở thẻ.
-            Chỉ hỗ trợ đặt COD; nếu ShippingFee null thì chưa xác định phí giao hàng.
+            Khách chọn COD hoặc cổng VNPay/MoMo đang khả dụng ở checkout; nếu ShippingFee null thì chưa xác định phí giao hàng. Không khẳng định cổng online đã sẵn sàng; hướng dẫn xem checkout.
             Không hứa miễn phí vận chuyển, đổi trả, giảm giá, thời gian giao hay chính sách chưa cung cấp.
             Không có quyền xem đơn, tài khoản, mật khẩu hoặc dữ liệu cá nhân; không tự tạo đơn,
             thanh toán, chỉnh giỏ hay khẳng định đã thực hiện hành động. Chỉ hướng dẫn khách thao tác.

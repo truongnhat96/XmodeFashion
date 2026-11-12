@@ -25,7 +25,7 @@ try
     await using var db = new FashionContext(options);
     await db.Database.MigrateAsync();
     await db.Database.MigrateAsync();
-    Check((await db.Database.GetAppliedMigrationsAsync()).Count() == 2, "fashion migrations are independent and repeatable");
+    Check((await db.Database.GetAppliedMigrationsAsync()).Count() == 3, "fashion migrations are independent and repeatable");
     Check(!await db.Products.AnyAsync() && !await db.Categories.AnyAsync(), "catalog starts empty");
     var catalog = new FashionCatalog(db);
     var category = await catalog.SaveCategoryAsync(null, new("Áo thun", null, null, 0, true));
